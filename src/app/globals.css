@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6e1e1;
+  --foreground: #bc8a6f;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-poppins-semi);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-poppins-semi), Arial, Helvetica, sans-serif;
+}
+
+* {
+  transition:
+    background-color 320ms ease,
+    border-color 320ms ease,
+    color 320ms ease,
+    opacity 320ms ease,
+    box-shadow 360ms ease,
+    transform 360ms ease;
+}
+
+.panel-content-enter {
+  animation: panel-enter 520ms ease;
+}
+
+.sidebar-hover-grow:hover {
+  transform: scale(1.02);
+}
+
+/* Botoes do menu lateral: tamanho fixo, sem crescer no hover */
+.sidebar-nav-stable {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+.sidebar-nav-stable:hover {
+  transform: none;
+}
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pequenos: Poppins-SemiBold */
+.text-xs,
+.text-sm,
+p,
+label,
+input,
+textarea,
+a,
+li {
+  font-family: var(--font-poppins-semi), Arial, Helvetica, sans-serif;
+}
+
+/* Medios: Poppins-Bold */
+.text-base,
+.text-lg,
+.text-xl,
+.text-2xl,
+button,
+strong,
+b {
+  font-family: var(--font-poppins-bold), Arial, Helvetica, sans-serif;
+}
+
+/* Grandes: Poppins-ExtraBold */
+.text-3xl,
+.text-4xl,
+.text-5xl,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-poppins-extra), Arial, Helvetica, sans-serif;
+}

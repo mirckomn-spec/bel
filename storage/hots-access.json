@@ -1,0 +1,67 @@
+{
+  "access": [
+    {
+      "username": "neat",
+      "profileKey": "loira",
+      "scope": "profile",
+      "updatedAt": "2026-04-30T18:45:59.484Z",
+      "updatedBy": "bel"
+    },
+    {
+      "username": "neat",
+      "profileKey": "loira",
+      "scope": "social",
+      "socialKey": "instagram",
+      "updatedAt": "2026-04-30T18:46:01.496Z",
+      "updatedBy": "bel"
+    },
+    {
+      "username": "isa",
+      "profileKey": "morena",
+      "scope": "profile",
+      "updatedAt": "2026-04-30T22:34:46.636Z",
+      "updatedBy": "bel"
+    },
+    {
+      "username": "isa",
+      "profileKey": "morena",
+      "scope": "social",
+      "socialKey": "twitter",
+      "updatedAt": "2026-04-30T22:35:01.627Z",
+      "updatedBy": "bel"
+    },
+    {
+      "username": "amanda",
+      "profileKey": "morena",
+      "scope": "profile",
+      "updatedAt": "2026-05-01T12:25:27.004Z",
+      "updatedBy": "bel"
+    },
+    {
+      "username": "amanda",
+      "profileKey": "morena",
+      "scope": "social",
+      "socialKey": "instagram",
+      "updatedAt": "2026-05-01T12:25:29.155Z",
+      "updatedBy": "bel"
+    }
+  ],
+  "credentialsByProfile": {
+    "loira": {
+      "profileKey": "loira",
+      "login": "joao",
+      "password": "123",
+      "imageUrl": "https://i.imgur.com/aJeHmuL.jpeg",
+      "updatedAt": "2026-04-30T18:20:25.375Z",
+      "updatedBy": "bel"
+    },
+    "morena": {
+      "profileKey": "morena",
+      "login": "fdsfsdfsd",
+      "password": "123",
+      "imageUrl": "https://i.imgur.com/clLhjxR.jpeg",
+      "updatedAt": "2026-04-30T18:20:26.518Z",
+      "updatedBy": "bel"
+    }
+  }
+}

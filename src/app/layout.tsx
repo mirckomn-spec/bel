@@ -1,0 +1,44 @@
+import type { Metadata } from "next";
+import localFont from "next/font/local";
+import "./globals.css";
+
+const poppinsSemiBold = localFont({
+  src: "../../fontes/Poppins-SemiBold/Poppins-SemiBold.ttf",
+  variable: "--font-poppins-semi",
+  display: "swap",
+});
+
+const poppinsBold = localFont({
+  src: "../../fontes/Poppins-Bold/Poppins-Bold.ttf",
+  variable: "--font-poppins-bold",
+  display: "swap",
+});
+
+const poppinsExtraBold = localFont({
+  src: "../../fontes/Poppins-ExtraBold/Poppins-ExtraBold.ttf",
+  variable: "--font-poppins-extra",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Hots",
+  description: "Area privada de comprovantes de vendas.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+      className={`${poppinsSemiBold.variable} ${poppinsBold.variable} ${poppinsExtraBold.variable} h-full antialiased`}
+    >
+      <body suppressHydrationWarning className="min-h-full flex flex-col">
+        {children}
+      </body>
+    </html>
+  );
+}

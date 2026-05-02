@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ba90633c-0f39-4a5d-ba25-15948b588f5e",
+    "username": "amanda",
+    "amount": 380,
+    "status": "approved",
+    "requestedAt": "2026-04-30T22:36:37.581Z",
+    "reviewedAt": "2026-04-30T22:37:36.619Z",
+    "reviewedBy": "bel",
+    "rejectionReason": null
+  },
+  {
+    "id": "8ce36ebd-712b-4555-8eb6-b018165ab26d",
+    "username": "isa",
+    "amount": 177.6,
+    "status": "approved",
+    "requestedAt": "2026-04-30T18:28:20.319Z",
+    "reviewedAt": "2026-04-30T18:28:32.146Z",
+    "reviewedBy": "bel",
+    "rejectionReason": null
+  },
+  {
+    "id": "d6b4db25-64a8-4998-8ba9-6406ab56f9e8",
+    "username": "neat",
+    "amount": 200,
+    "status": "approved",
+    "requestedAt": "2026-04-30T18:14:58.980Z",
+    "reviewedAt": "2026-04-30T18:16:01.096Z",
+    "reviewedBy": "bel",
+    "rejectionReason": null
+  }
+]

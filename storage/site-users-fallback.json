@@ -1,0 +1,20 @@
+[
+  {
+    "username": "andre",
+    "passwordHash": "$2b$10$sgJBCV8GeVBTc4WVwzhQeugXmwBFg1NH3TM5uFXmnnaR9p8Fr93ge",
+    "role": "member",
+    "blocked": false,
+    "blockedReason": null,
+    "deleted": false,
+    "createdAt": "2026-04-27T14:38:31.526Z"
+  },
+  {
+    "username": "neat",
+    "passwordHash": "$2b$10$M/tc4trsE6aBy94dxgx5.O7P6XYElQxjGEzul23D7PhDApKeASy86",
+    "role": "member",
+    "blocked": false,
+    "blockedReason": null,
+    "deleted": false,
+    "createdAt": "2026-04-30T14:26:19.057Z"
+  }
+]

@@ -1,0 +1,456 @@
+import { NextResponse } from "next/server";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { getSessionFromCookie } from "@/lib/auth";
+import { getDbSafe } from "@/lib/mongodb";
+import { getAllMemberControls } from "@/lib/member-controls";
+
+const DEFAULT_MIN_WITHDRAW = 200;
+const PROOFS_FALLBACK_FILE = path.join(process.cwd(), "storage", "proofs-fallback.json");
+const WITHDRAWALS_FALLBACK_FILE = path.join(process.cwd(), "storage", "withdrawals-fallback.json");
+const WITHDRAW_SETTINGS_FALLBACK_FILE = path.join(
+  process.cwd(),
+  "storage",
+  "withdrawal-settings-fallback.json",
+);
+const DAILY_TARGET = 150;
+
+type ProofDoc = {
+  uploader?: string;
+  saleValue?: number;
+  createdAt: string | Date;
+};
+
+type WithdrawalDoc = {
+  id: string;
+  username: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  rejectionReason?: string | null;
+};
+
+function normalizeWithdrawalStatus(value: unknown): WithdrawalDoc["status"] {
+  const status = String(value ?? "").toLowerCase();
+  if (status === "approved" || status === "rejected") return status;
+  return "pending";
+}
+
+function normalizeWithdrawalRow(row: Partial<WithdrawalDoc>): WithdrawalDoc {
+  return {
+    id: String(row.id ?? ""),
+    username: String(row.username ?? "").toLowerCase(),
+    amount: Number(row.amount ?? 0),
+    status: normalizeWithdrawalStatus(row.status),
+    requestedAt: String(row.requestedAt ?? new Date().toISOString()),
+    reviewedAt: row.reviewedAt ? String(row.reviewedAt) : null,
+    reviewedBy: row.reviewedBy ? String(row.reviewedBy) : null,
+    rejectionReason: row.rejectionReason ? String(row.rejectionReason) : null,
+  };
+}
+
+function toIsoStringIfDate(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  if (value == null) return null;
+  return String(value);
+}
+
+async function readJsonSafe<T>(filePath: string, fallback: T): Promise<T> {
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function writeJsonSafe(filePath: string, data: unknown) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+}
+
+function normalizeProofRow(row: Partial<ProofDoc>): ProofDoc {
+  return {
+    uploader: String(row.uploader ?? "").toLowerCase(),
+    saleValue: Number(row.saleValue ?? 0),
+    createdAt:
+      row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt ?? ""),
+  };
+}
+
+async function loadMergedProofs(dbAvailable: boolean) {
+  const fallbackProofs = (await readJsonSafe<ProofDoc[]>(PROOFS_FALLBACK_FILE, [])).map((item) =>
+    normalizeProofRow(item),
+  );
+  if (!dbAvailable) {
+    return fallbackProofs;
+  }
+  const { db } = await getDbSafe();
+  if (!db) return fallbackProofs;
+  const dbProofs = ((await db.collection("proofs").find({}).toArray()) as unknown as ProofDoc[]).map((item) =>
+    normalizeProofRow(item),
+  );
+  return [...dbProofs, ...fallbackProofs];
+}
+
+async function loadMergedWithdrawals(dbAvailable: boolean) {
+  const fallbackWithdrawals = (
+    await readJsonSafe<WithdrawalDoc[]>(WITHDRAWALS_FALLBACK_FILE, [])
+  ).map((item) => normalizeWithdrawalRow(item));
+  if (!dbAvailable) {
+    return fallbackWithdrawals;
+  }
+  const { db } = await getDbSafe();
+  if (!db) return fallbackWithdrawals;
+  const dbWithdrawalsRaw = (await db
+    .collection("withdrawals")
+    .find({})
+    .sort({ requestedAt: -1 })
+    .toArray()) as unknown as WithdrawalDoc[];
+  const dbWithdrawals = dbWithdrawalsRaw.map((item) =>
+    normalizeWithdrawalRow({
+      ...item,
+      requestedAt: toIsoStringIfDate((item as unknown as { requestedAt?: unknown }).requestedAt) ?? "",
+      reviewedAt: toIsoStringIfDate((item as unknown as { reviewedAt?: unknown }).reviewedAt),
+    }),
+  );
+  return [...dbWithdrawals, ...fallbackWithdrawals];
+}
+
+function dayKey(dateInput: string | Date) {
+  return new Date(dateInput).toISOString().slice(0, 10);
+}
+
+function computeTodayCommissionPercentForUser(
+  username: string,
+  proofs: ProofDoc[],
+  commissionPercentOverride?: number | null,
+) {
+  if (commissionPercentOverride != null) {
+    return Math.min(100, Math.max(0, Number(commissionPercentOverride)));
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTotal = proofs
+    .filter((proof) => String(proof.uploader ?? "").toLowerCase() === username)
+    .filter((proof) => dayKey(proof.createdAt) === today)
+    .reduce((acc, proof) => acc + Number(proof.saleValue ?? 0), 0);
+  return todayTotal >= DAILY_TARGET ? 40 : 35;
+}
+
+function computeAvailableFromProofsAndWithdrawals(
+  username: string,
+  proofs: ProofDoc[],
+  withdrawals: WithdrawalDoc[],
+  options?: {
+    commissionPercentOverride?: number | null;
+    balanceAdjustment?: number;
+  },
+) {
+  const commissionPercent = computeTodayCommissionPercentForUser(
+    username,
+    proofs,
+    options?.commissionPercentOverride,
+  );
+  const grossReal = proofs
+    .filter((proof) => String(proof.uploader ?? "").toLowerCase() === username)
+    .reduce((acc, proof) => acc + Number(proof.saleValue ?? 0) * (commissionPercent / 100), 0);
+  const approvedTotal = withdrawals
+    .filter(
+      (w) =>
+        String(w.username ?? "").toLowerCase() === username &&
+        normalizeWithdrawalStatus(w.status) === "approved",
+    )
+    .reduce((acc, w) => acc + Number(w.amount ?? 0), 0);
+  const balanceAdjustment = Number(options?.balanceAdjustment ?? 0);
+  return {
+    commissionPercent,
+    balanceAdjustment: Number(balanceAdjustment.toFixed(2)),
+    approvedTotal: Number(approvedTotal.toFixed(2)),
+    grossReal: Number(grossReal.toFixed(2)),
+    available: Number(Math.max(0, grossReal - approvedTotal + balanceAdjustment).toFixed(2)),
+  };
+}
+
+export async function GET(request: Request) {
+  const session = await getSessionFromCookie();
+  if (!session) {
+    return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+
+  const sessionUsername = String(session.username ?? "").toLowerCase();
+  const { searchParams } = new URL(request.url);
+  const usernameParam = String(searchParams.get("username") ?? "").trim().toLowerCase();
+  const targetUsername =
+    session.role === "admin" && usernameParam ? usernameParam : sessionUsername;
+
+  const controls = await getAllMemberControls();
+  const controlsMap = new Map(controls.map((item) => [item.username, item]));
+
+  const { db } = await getDbSafe();
+  const minWithdraw = db
+    ? Number(
+        (
+          await db.collection("settings").findOne<{ minWithdraw?: unknown }>({ key: "withdrawals" })
+        )?.minWithdraw ?? DEFAULT_MIN_WITHDRAW,
+      )
+    : Number(
+        (await readJsonSafe<{ minWithdraw?: number }>(WITHDRAW_SETTINGS_FALLBACK_FILE, {}))
+          .minWithdraw ?? DEFAULT_MIN_WITHDRAW,
+      );
+
+  if (!db) {
+    const proofs = await loadMergedProofs(false);
+    const withdrawals = await loadMergedWithdrawals(false);
+    const visible =
+      session.role === "admin"
+        ? withdrawals
+        : withdrawals.filter((w) => w.username === sessionUsername);
+    const control = controlsMap.get(targetUsername);
+    const wallet = computeAvailableFromProofsAndWithdrawals(targetUsername, proofs, withdrawals, {
+      commissionPercentOverride: control?.commissionPercentOverride ?? null,
+      balanceAdjustment: control?.balanceAdjustment ?? 0,
+    });
+    return NextResponse.json({
+      minWithdraw,
+      wallet,
+      withdrawals: visible.sort(
+        (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime(),
+      ),
+    });
+  }
+
+  const proofs = await loadMergedProofs(true);
+  const allWithdrawals = await loadMergedWithdrawals(true);
+
+  const visible =
+    session.role === "admin"
+      ? allWithdrawals
+      : allWithdrawals.filter((w) => w.username === sessionUsername);
+
+  const control = controlsMap.get(targetUsername);
+  const wallet = computeAvailableFromProofsAndWithdrawals(targetUsername, proofs, allWithdrawals, {
+    commissionPercentOverride: control?.commissionPercentOverride ?? null,
+    balanceAdjustment: control?.balanceAdjustment ?? 0,
+  });
+
+  return NextResponse.json({
+    minWithdraw,
+    wallet,
+    withdrawals: visible,
+  });
+}
+
+export async function POST() {
+  const controls = await getAllMemberControls();
+  const controlsMap = new Map(controls.map((item) => [item.username, item]));
+  const session = await getSessionFromCookie();
+  if (!session) {
+    return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+  const sessionUsername = String(session.username ?? "").toLowerCase();
+  if (session.role !== "member") {
+    return NextResponse.json({ error: "Somente membros podem solicitar saque." }, { status: 403 });
+  }
+
+  const { db } = await getDbSafe();
+  const minWithdraw = db
+    ? Number(
+        (
+          await db.collection("settings").findOne<{ minWithdraw?: unknown }>({ key: "withdrawals" })
+        )?.minWithdraw ?? DEFAULT_MIN_WITHDRAW,
+      )
+    : Number(
+        (await readJsonSafe<{ minWithdraw?: number }>(WITHDRAW_SETTINGS_FALLBACK_FILE, {}))
+          .minWithdraw ?? DEFAULT_MIN_WITHDRAW,
+      );
+
+  if (!db) {
+    const proofs = await loadMergedProofs(false);
+    const withdrawals = await loadMergedWithdrawals(false);
+    const pending = withdrawals.find(
+      (w) => w.username === sessionUsername && w.status === "pending",
+    );
+    if (pending) {
+      return NextResponse.json(
+        { error: "Voce ja possui uma solicitacao de saque pendente." },
+        { status: 400 },
+      );
+    }
+    const control = controlsMap.get(sessionUsername);
+    const wallet = computeAvailableFromProofsAndWithdrawals(sessionUsername, proofs, withdrawals, {
+      commissionPercentOverride: control?.commissionPercentOverride ?? null,
+      balanceAdjustment: control?.balanceAdjustment ?? 0,
+    });
+    if (wallet.available < minWithdraw) {
+      return NextResponse.json(
+        { error: `Saque minimo: R$ ${minWithdraw.toFixed(2)}.` },
+        { status: 400 },
+      );
+    }
+    const entry: WithdrawalDoc = {
+      id: randomUUID(),
+      username: sessionUsername,
+      amount: wallet.available,
+      status: "pending",
+      requestedAt: new Date().toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+      rejectionReason: null,
+    };
+    withdrawals.unshift(entry);
+    await writeJsonSafe(WITHDRAWALS_FALLBACK_FILE, withdrawals);
+    return NextResponse.json({ ok: true, request: entry });
+  }
+
+  const proofs = await loadMergedProofs(true);
+  const withdrawals = await loadMergedWithdrawals(true);
+  const pending = withdrawals.find(
+    (w) => w.username === sessionUsername && w.status === "pending",
+  );
+  if (pending) {
+    return NextResponse.json(
+      { error: "Voce ja possui uma solicitacao de saque pendente." },
+      { status: 400 },
+    );
+  }
+
+  const control = controlsMap.get(sessionUsername);
+  const wallet = computeAvailableFromProofsAndWithdrawals(sessionUsername, proofs, withdrawals, {
+    commissionPercentOverride: control?.commissionPercentOverride ?? null,
+    balanceAdjustment: control?.balanceAdjustment ?? 0,
+  });
+  if (wallet.available < minWithdraw) {
+    return NextResponse.json(
+      { error: `Saque minimo: R$ ${minWithdraw.toFixed(2)}.` },
+      { status: 400 },
+    );
+  }
+
+  const now = new Date();
+  const requestId = randomUUID();
+  await db.collection("withdrawals").insertOne({
+    id: requestId,
+    username: sessionUsername,
+    amount: wallet.available,
+    status: "pending" as const,
+    requestedAt: now,
+    reviewedAt: null,
+    reviewedBy: null,
+    rejectionReason: null,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    request: {
+      id: requestId,
+      username: sessionUsername,
+      amount: wallet.available,
+      status: "pending",
+      requestedAt: now.toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+      rejectionReason: null,
+    },
+  });
+}
+
+export async function PATCH(request: Request) {
+  const controls = await getAllMemberControls();
+  const controlsMap = new Map(controls.map((item) => [item.username, item]));
+  const session = await getSessionFromCookie();
+  if (!session) {
+    return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
+  }
+  if (session.role !== "admin") {
+    return NextResponse.json({ error: "Somente admin pode revisar saques." }, { status: 403 });
+  }
+
+  const body = (await request.json().catch(() => null)) as {
+    id?: string;
+    action?: "approve" | "reject";
+    rejectionReason?: string;
+  } | null;
+  const id = String(body?.id ?? "");
+  const action = body?.action;
+  if (!id || (action !== "approve" && action !== "reject")) {
+    return NextResponse.json({ error: "Dados invalidos." }, { status: 400 });
+  }
+
+  const reviewedAt = new Date().toISOString();
+  if (action === "reject" && !String(body?.rejectionReason ?? "").trim()) {
+    return NextResponse.json({ error: "Informe o motivo da recusa." }, { status: 400 });
+  }
+
+  const { db } = await getDbSafe();
+  if (!db) {
+    const proofs = await loadMergedProofs(false);
+    const withdrawals = await loadMergedWithdrawals(false);
+    const idx = withdrawals.findIndex((w) => w.id === id);
+    if (idx < 0) return NextResponse.json({ error: "Solicitacao nao encontrada." }, { status: 404 });
+    if (withdrawals[idx].status !== "pending") {
+      return NextResponse.json({ error: "Solicitacao ja foi revisada." }, { status: 400 });
+    }
+    const control = controlsMap.get(withdrawals[idx].username);
+    const finalAmount =
+      action === "approve"
+        ? computeAvailableFromProofsAndWithdrawals(withdrawals[idx].username, proofs, withdrawals, {
+            commissionPercentOverride: control?.commissionPercentOverride ?? null,
+            balanceAdjustment: control?.balanceAdjustment ?? 0,
+          }).available
+        : withdrawals[idx].amount;
+    withdrawals[idx] = {
+      ...withdrawals[idx],
+      amount: Number(finalAmount.toFixed(2)),
+      status: action === "approve" ? "approved" : "rejected",
+      reviewedAt,
+      reviewedBy: session.username,
+      rejectionReason: action === "reject" ? String(body?.rejectionReason ?? "").trim() : null,
+    };
+    await writeJsonSafe(WITHDRAWALS_FALLBACK_FILE, withdrawals);
+    return NextResponse.json({ ok: true });
+  }
+
+  const target = await db.collection("withdrawals").findOne({ id });
+  if (!target) {
+    return NextResponse.json({ error: "Solicitacao nao encontrada." }, { status: 404 });
+  }
+
+  if (normalizeWithdrawalStatus(target.status) !== "pending") {
+    return NextResponse.json({ error: "Solicitacao ja foi revisada." }, { status: 400 });
+  }
+
+  let amountToSave = Number(target.amount ?? 0);
+  if (action === "approve") {
+    const proofs = await loadMergedProofs(true);
+    const allWithdrawals = await loadMergedWithdrawals(true);
+    const targetUsername = String(target.username ?? "").toLowerCase();
+    const control = controlsMap.get(targetUsername);
+    amountToSave = computeAvailableFromProofsAndWithdrawals(
+      targetUsername,
+      proofs,
+      allWithdrawals,
+      {
+        commissionPercentOverride: control?.commissionPercentOverride ?? null,
+        balanceAdjustment: control?.balanceAdjustment ?? 0,
+      },
+    ).available;
+  }
+
+  await db.collection("withdrawals").updateOne(
+    { id },
+    {
+      $set: {
+        amount: Number(amountToSave.toFixed(2)),
+        status: action === "approve" ? "approved" : "rejected",
+        reviewedAt: new Date(),
+        reviewedBy: session.username,
+        rejectionReason: action === "reject" ? String(body?.rejectionReason ?? "").trim() : null,
+      },
+    },
+  );
+
+  return NextResponse.json({ ok: true });
+}
