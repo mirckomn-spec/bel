@@ -71,24 +71,40 @@ export async function upsertMemberControl(
   const normalized = username.toLowerCase().trim();
   const db = await getDbRequired();
 
+  // Defaults aplicados apenas na primeira insercao do documento.
+  // CRITICO: o MongoDB proibe que o mesmo campo apareca em `$set` e em
+  // `$setOnInsert` na mesma operacao (erro 40 "would create a conflict").
+  // Por isso filtramos os defaults removendo qualquer chave que ja
+  // venha no patch.
+  const allDefaults: Record<string, unknown> = {
+    balanceAdjustment: 0,
+    dailyProgressOverride: null,
+    streakOverride: null,
+    commissionPercentOverride: null,
+    globalCommissionPercentOverride: null,
+    goalReachedCommissionPercentOverride: null,
+  };
+  const patchKeys = new Set(Object.keys(patch));
+  const setOnInsert: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(allDefaults)) {
+    if (!patchKeys.has(key)) setOnInsert[key] = value;
+  }
+
+  const updateDoc: Record<string, unknown> = {
+    $set: {
+      username: normalized,
+      ...patch,
+      updatedAt: new Date(),
+      updatedBy,
+    },
+  };
+  if (Object.keys(setOnInsert).length > 0) {
+    updateDoc.$setOnInsert = setOnInsert;
+  }
+
   await db.collection("member_controls").updateOne(
     { username: normalized },
-    {
-      $set: {
-        username: normalized,
-        ...patch,
-        updatedAt: new Date(),
-        updatedBy,
-      },
-      $setOnInsert: {
-        balanceAdjustment: 0,
-        dailyProgressOverride: null,
-        streakOverride: null,
-        commissionPercentOverride: null,
-        globalCommissionPercentOverride: null,
-        goalReachedCommissionPercentOverride: null,
-      },
-    },
+    updateDoc,
     { upsert: true },
   );
 
