@@ -5,12 +5,32 @@ const globalWithMongo = global as typeof globalThis & {
   mongoClientPromise?: Promise<MongoClient>;
 };
 
+function cleanEnv(value: string | undefined): string {
+  if (!value) return "";
+  let v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 function getMongoUri() {
-  const uri = process.env.MONGODB_URI?.trim();
+  const uri = cleanEnv(process.env.MONGODB_URI);
   if (!uri) {
     throw new Error("Defina MONGODB_URI nas variaveis de ambiente.");
   }
   return uri;
+}
+
+function toFriendlyMongoError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("authentication failed") || lower.includes("bad auth")) {
+    return "Autenticacao do MongoDB falhou. Confira usuario e senha em MONGODB_URI (na Vercel). Se a senha tiver @, # ou %, use a versao codificada na URL.";
+  }
+  return message;
 }
 
 function getMongoDbName() {
@@ -59,7 +79,9 @@ export async function getDbRequired() {
   const { db, error } = await getDbSafe();
   if (!db) {
     throw new MongoUnavailableError(
-      error ?? "MongoDB indisponivel. Defina MONGODB_URI e verifique a rede.",
+      toFriendlyMongoError(
+        error ?? "MongoDB indisponivel. Defina MONGODB_URI e verifique a rede.",
+      ),
     );
   }
   return db;

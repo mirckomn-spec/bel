@@ -40,6 +40,24 @@ Opcional (dominio proprio):
 
 Depois de alterar variaveis: **Redeploy**.
 
+## Erro `bad auth` / `authentication failed`
+
+A URI do MongoDB esta com **usuario ou senha incorretos** (nao e bug do site).
+
+1. No **MongoDB Atlas** → **Database Access** → confira o usuario e a senha.
+2. **Connect** → **Drivers** → copie a URI nova.
+3. Se a senha tiver caracteres especiais, codifique na URL:
+   - `@` → `%40`
+   - `#` → `%23`
+   - `%` → `%25`
+   - `:` → `%3A`
+4. Cole em `MONGODB_URI` na Vercel **sem aspas** no inicio/fim.
+5. **Redeploy**.
+
+Exemplo de formato:
+
+`mongodb+srv://USUARIO:SENHA@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority`
+
 ## Login
 
 - Usuario admin: `bel`
