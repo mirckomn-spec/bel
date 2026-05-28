@@ -40,15 +40,6 @@ Opcional (dominio proprio):
 
 Depois de alterar variaveis: **Redeploy**.
 
-## Testar se o banco esta ok (producao)
-
-Abra apos o deploy:
-
-`https://bel-gamma.vercel.app/api/health/db`
-
-- `connected: true` → MongoDB OK
-- `connected: false` → veja o campo `hint` e ajuste `MONGODB_URI` / Atlas (rede `0.0.0.0/0`)
-
 ## Login
 
 - Usuario admin: `bel`

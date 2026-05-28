@@ -22,9 +22,7 @@ function resolveRoleFromPayload(payload: jwt.JwtPayload): UserRole {
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error(
-      "Defina JWT_SECRET nas variaveis de ambiente (painel de hospedagem ou .env.local).",
-    );
+    throw new Error("Defina JWT_SECRET nas variaveis de ambiente.");
   }
   return secret;
 }

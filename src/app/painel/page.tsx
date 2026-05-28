@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
 import MembrosPainelClient from "@/components/membros-painel-client";
 import { getSessionFromCookie } from "@/lib/auth";
-import { getDbSafe } from "@/lib/mongodb";
+import { getDbRequired } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 export default async function PainelPage() {
   const session = await getSessionFromCookie();
@@ -22,18 +21,12 @@ export default async function PainelPage() {
     createdAt: Date;
   };
 
-  let proofs: ProofRow[] = [];
-  let dbError: string | null = null;
-  const { db, error } = await getDbSafe();
-  if (db) {
-    proofs = (await db
-      .collection("proofs")
-      .find({ uploader: session.username })
-      .sort({ createdAt: -1 })
-      .toArray()) as unknown as ProofRow[];
-  } else {
-    dbError = error;
-  }
+  const db = await getDbRequired();
+  const proofs = (await db
+    .collection("proofs")
+    .find({ uploader: session.username })
+    .sort({ createdAt: -1 })
+    .toArray()) as unknown as ProofRow[];
 
   const initialProofs = proofs.map((proof) => ({
     id: String(proof._id),
@@ -47,10 +40,6 @@ export default async function PainelPage() {
   }));
 
   return (
-    <MembrosPainelClient
-      username={session.username}
-      initialProofs={initialProofs}
-      dbError={dbError}
-    />
+    <MembrosPainelClient username={session.username} initialProofs={initialProofs} />
   );
 }

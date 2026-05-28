@@ -2,10 +2,9 @@ import { redirect } from "next/navigation";
 import DashboardClient from "@/components/dashboard-client";
 import { getSessionFromCookie } from "@/lib/auth";
 import { listMemberUsernames } from "@/lib/members";
-import { getDbSafe } from "@/lib/mongodb";
+import { getDbRequired } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 function getCurrentMs() {
   return Date.now();
@@ -29,18 +28,12 @@ export default async function DashboardPage() {
     penaltyPercentApplied?: number | null;
   };
 
-  let proofs: ProofRow[] = [];
-  let dbError: string | null = null;
-  const { db, error } = await getDbSafe();
-  if (db) {
-    proofs = (await db
-      .collection("proofs")
-      .find({})
-      .sort({ createdAt: -1 })
-      .toArray()) as unknown as ProofRow[];
-  } else {
-    dbError = error;
-  }
+  const db = await getDbRequired();
+  const proofs = (await db
+    .collection("proofs")
+    .find({})
+    .sort({ createdAt: -1 })
+    .toArray()) as unknown as ProofRow[];
 
   const initialProofs = proofs.map((proof) => ({
     id: String(proof._id),
@@ -80,7 +73,5 @@ export default async function DashboardPage() {
     })),
   ];
 
-  return (
-    <DashboardClient initialProofs={initialProofs} members={members} dbError={dbError} />
-  );
+  return <DashboardClient initialProofs={initialProofs} members={members} />;
 }
