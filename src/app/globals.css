@@ -1,15 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdf2f5;
-  --foreground: #a64d79;
-  --hots-bg: #fdf2f5;
-  --hots-sidebar: #fce4ec;
-  --hots-primary: #f48fb1;
-  --hots-text: #a64d79;
-  --hots-muted: #b885a3;
-  --hots-border: #f8bbd0;
-  --hots-card: #ffffff;
+  --background: #fff7f9;
+  --foreground: #b85c7a;
+  --hots-bg: #fff7f9;
+  --hots-sidebar: #fef4f5;
+  --hots-primary: #f08aaf;
+  --hots-primary-soft: #f6b8cc;
+  --hots-text: #b85c7a;
+  --hots-muted: #c992a8;
+  --hots-border: #f5d0dc;
+  --hots-card: #fdf7f7;
+  --hots-shadow: rgba(184, 92, 122, 0.1);
 }
 
 @theme inline {
@@ -42,12 +44,96 @@ body {
   transform: scale(1.02);
 }
 
-/* Botoes do menu lateral: tamanho fixo, sem crescer no hover */
+.admin-kawaii-shell {
+  background: var(--hots-bg);
+}
+
+.admin-kawaii-sidebar {
+  background: var(--hots-sidebar);
+  border: 1px solid var(--hots-border);
+  border-radius: 30px;
+  box-shadow: 0 10px 32px var(--hots-shadow);
+}
+
+.admin-kawaii-nav-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(240, 138, 175, 0.35) transparent;
+}
+
+.admin-kawaii-nav-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.admin-kawaii-nav-scroll::-webkit-scrollbar-thumb {
+  background: rgba(240, 138, 175, 0.35);
+  border-radius: 9999px;
+}
+
+.admin-kawaii-nav-btn {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  border: none;
+  border-radius: 9999px;
+  transition:
+    transform 280ms ease,
+    background-color 280ms ease,
+    box-shadow 280ms ease,
+    color 280ms ease;
+}
+
+.admin-kawaii-nav-btn:hover {
+  transform: translateY(-1px);
+  background-color: #fffafb;
+  box-shadow: 0 4px 14px rgba(240, 138, 175, 0.14);
+}
+
+.admin-kawaii-nav-btn.is-active {
+  transform: none;
+  border: none;
+  background: linear-gradient(90deg, #f08aaf 0%, #f6b8cc 52%, #fad4e4 100%);
+  box-shadow: 0 6px 18px rgba(240, 138, 175, 0.28);
+  color: #ffffff;
+}
+
+.admin-kawaii-nav-btn.is-active:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(240, 138, 175, 0.34);
+}
+
+.admin-kawaii-logout {
+  border: none;
+  border-radius: 9999px;
+  max-width: 100%;
+  transition:
+    transform 280ms ease,
+    background-color 280ms ease,
+    box-shadow 280ms ease;
+}
+
+.admin-kawaii-logout:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(240, 138, 175, 0.16);
+}
+
+.admin-kawaii-panel {
+  background: #ffffff;
+  border: 1px solid var(--hots-border);
+  border-radius: 28px;
+  box-shadow: 0 10px 32px var(--hots-shadow);
+}
+
+/* Botoes genericos do menu lateral antigo */
 .sidebar-nav-stable {
   box-sizing: border-box;
   display: flex;
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   align-items: center;
 }
 

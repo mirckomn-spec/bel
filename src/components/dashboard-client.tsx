@@ -20,6 +20,166 @@ const ADMIN_DASHBOARD_DAYS: Record<"d1" | "d7" | "d14" | "d31", number> = {
   d31: 31,
 };
 
+type AdminNavSection =
+  | "dashboard"
+  | "comprovantes"
+  | "tabela"
+  | "membros"
+  | "usuarios"
+  | "indicacoes"
+  | "saques"
+  | "gerenciar-multas"
+  | "hots"
+  | "configuracoes";
+
+const ADMIN_NAV_ITEMS: {
+  id: AdminNavSection;
+  label: string;
+  icon: "home" | "file" | "grid" | "users" | "user" | "link" | "wallet" | "gavel" | "flame" | "settings";
+  deco: "heart" | "bow";
+}[] = [
+  { id: "dashboard", label: "Dashboard", icon: "home", deco: "heart" },
+  { id: "comprovantes", label: "Comprovantes", icon: "file", deco: "bow" },
+  { id: "tabela", label: "Tabela", icon: "grid", deco: "heart" },
+  { id: "membros", label: "Membros", icon: "users", deco: "heart" },
+  { id: "usuarios", label: "Usuarios", icon: "user", deco: "bow" },
+  { id: "indicacoes", label: "Indicacoes", icon: "link", deco: "heart" },
+  { id: "saques", label: "Saques", icon: "wallet", deco: "bow" },
+  { id: "gerenciar-multas", label: "Gerenciar Multas", icon: "gavel", deco: "heart" },
+  { id: "hots", label: "Hots", icon: "flame", deco: "bow" },
+  { id: "configuracoes", label: "Configuracoes", icon: "settings", deco: "bow" },
+];
+
+function AdminNavIcon({
+  name,
+  active = false,
+}: {
+  name: (typeof ADMIN_NAV_ITEMS)[number]["icon"];
+  active?: boolean;
+}) {
+  const stroke = active ? "#FFFFFF" : "#B85C7A";
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: 2 };
+
+  switch (name) {
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z" />
+        </svg>
+      );
+    case "file":
+      return (
+        <svg {...common}>
+          <path d="M8 4h6l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+          <path d="M14 4v4h4" />
+        </svg>
+      );
+    case "grid":
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="6" height="6" rx="1" />
+          <rect x="14" y="4" width="6" height="6" rx="1" />
+          <rect x="4" y="14" width="6" height="6" rx="1" />
+          <rect x="14" y="14" width="6" height="6" rx="1" />
+        </svg>
+      );
+    case "users":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3 19c1.2-3 4.3-5 6-5s4.8 2 6 5" />
+          <circle cx="17" cy="9" r="2.5" />
+          <path d="M15 19c.8-2 2.4-3.5 4-3.5" />
+        </svg>
+      );
+    case "user":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20c1.5-3.5 4.5-5.5 7-5.5s5.5 2 7 5.5" />
+        </svg>
+      );
+    case "link":
+      return (
+        <svg {...common}>
+          <path d="M10 13a4 4 0 0 1 0-5.7l1.3-1.3a4 4 0 0 1 5.7 5.7l-1 1" />
+          <path d="M14 11a4 4 0 0 1 0 5.7l-1.3 1.3a4 4 0 0 1-5.7-5.7l1-1" />
+        </svg>
+      );
+    case "wallet":
+      return (
+        <svg {...common}>
+          <rect x="3" y="7" width="18" height="12" rx="2" />
+          <path d="M3 11h18" />
+        </svg>
+      );
+    case "gavel":
+      return (
+        <svg {...common}>
+          <path d="m14 4 4 4-8 8-4-4 8-8z" />
+          <path d="M5 19h14" />
+        </svg>
+      );
+    case "flame":
+      return (
+        <svg {...common}>
+          <path d="M12 4c1 3 4 4.5 4 8a4 4 0 1 1-8 0c0-3.5 3-5 4-8z" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4" />
+        </svg>
+      );
+  }
+}
+
+function AdminNavDeco({
+  deco,
+  isHotsActive,
+  active = false,
+}: {
+  deco: "heart" | "bow";
+  isHotsActive: boolean;
+  active?: boolean;
+}) {
+  if (isHotsActive) {
+    return (
+      <img
+        src="https://i.imgur.com/D1JcuES.png"
+        alt=""
+        className="h-7 w-7 shrink-0 object-contain"
+        draggable={false}
+      />
+    );
+  }
+  if (deco === "bow") {
+    return (
+      <img
+        src="https://i.imgur.com/0aC5acc.png"
+        alt=""
+        className={`h-5 w-5 shrink-0 object-contain ${active ? "brightness-110" : ""}`}
+        draggable={false}
+      />
+    );
+  }
+  return (
+    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill={active ? "#FFFFFF" : "#F08AAF"} aria-hidden>
+      <path d="M12 21s-6.2-4.4-8.3-8.1C1.8 9.6 4.2 5.5 8 5.5c2 0 3.2 1.2 4 2.4.8-1.2 2-2.4 4-2.4 3.8 0 6.2 4.1 4.3 7.4C18.2 16.6 12 21 12 21z" />
+    </svg>
+  );
+}
+
+function PastelHeart({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg className={`inline-block shrink-0 ${className}`} viewBox="0 0 24 24" fill="#F8BBD0" aria-hidden>
+      <path d="M12 21s-6.2-4.4-8.3-8.1C1.8 9.6 4.2 5.5 8 5.5c2 0 3.2 1.2 4 2.4.8-1.2 2-2.4 4-2.4 3.8 0 6.2 4.1 4.3 7.4C18.2 16.6 12 21 12 21z" />
+    </svg>
+  );
+}
+
 type Proof = {
   id: string;
   sellerName: string;
@@ -152,6 +312,21 @@ const HOTS_SOCIAL_LABELS: Record<
   discord: "Discord",
 };
 
+function hotsAccessItemKey(
+  item: Pick<HotsAccessItem, "username" | "profileKey" | "scope" | "socialKey">,
+) {
+  return `${item.username}-${item.profileKey}-${item.scope}-${item.socialKey ?? "none"}`;
+}
+
+function hotsRemoveConfirmMessage(
+  item: Pick<HotsAccessItem, "username" | "profileKey" | "scope" | "socialKey">,
+) {
+  if (item.scope === "profile") {
+    return `Remover o acesso de @${item.username} ao perfil ${item.profileKey}?`;
+  }
+  return `Remover o acesso de @${item.username} à rede ${HOTS_SOCIAL_LABELS[item.socialKey ?? "instagram"]} (${item.profileKey})?`;
+}
+
 function isAdminFineActive(fine: AdminFine): boolean {
   if (fine.durationType === "eterno") return true;
   if (!fine.expiresAt) return true;
@@ -181,17 +356,7 @@ function adminPodiumRowClass(index: number) {
 }
 
 export default function DashboardClient({ initialProofs, members }: DashboardClientProps) {
-  type DashboardSection =
-    | "dashboard"
-    | "comprovantes"
-    | "tabela"
-    | "membros"
-    | "usuarios"
-    | "saques"
-    | "configuracoes"
-    | "gerenciar-multas"
-    | "hots"
-    | "indicacoes";
+  type DashboardSection = AdminNavSection;
 
   const router = useRouter();
   const [proofs, setProofs] = useState(initialProofs);
@@ -214,7 +379,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
   const [fineEditById, setFineEditById] = useState<
     Record<string, { durationType: string; durationValue: string; penaltyPercent: string }>
   >({});
-  const [hotsUser, setHotsUser] = useState("camila");
+  const [hotsUser, setHotsUser] = useState("");
   const [hotsProfile, setHotsProfile] = useState<"loira" | "morena">("loira");
   const [hotsSocial, setHotsSocial] = useState<
     "twitter" | "facebook" | "tiktok" | "instagram" | "discord"
@@ -222,6 +387,9 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
   const [hotsMessage, setHotsMessage] = useState("");
   const [hotsAccessList, setHotsAccessList] = useState<HotsAccessItem[]>([]);
   const [hotsTab, setHotsTab] = useState<"liberar" | "modificar">("liberar");
+  const [hotsLiberarStep, setHotsLiberarStep] = useState<null | "profile" | "social">(null);
+  const [hotsRemoveConfirmKey, setHotsRemoveConfirmKey] = useState<string | null>(null);
+  const [hotsRemoveBusyKey, setHotsRemoveBusyKey] = useState<string | null>(null);
   const [hotsConfigProfile, setHotsConfigProfile] = useState<"loira" | "morena">("loira");
   const [hotsLoginInput, setHotsLoginInput] = useState("");
   const [hotsPasswordInput, setHotsPasswordInput] = useState("");
@@ -1104,31 +1272,10 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
     }
   }
 
-  async function handleReleaseHotsAccess(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function releaseHotsSocialAccess() {
+    if (!hotsUser) return;
     setHotsMessage("");
 
-    const response = await fetch("/api/hots-access", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "release",
-        username: hotsUser,
-        profileKey: hotsProfile,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setHotsMessage(data.error ?? "Falha ao liberar acesso.");
-      return;
-    }
-    setHotsMessage("Acesso liberado com sucesso.");
-    await loadHotsAccessList();
-  }
-
-  async function handleReleaseHotsSocialAccess(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setHotsMessage("");
     const response = await fetch("/api/hots-access", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1145,6 +1292,8 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
       return;
     }
     setHotsMessage(`Rede ${HOTS_SOCIAL_LABELS[hotsSocial]} liberada para @${hotsUser}.`);
+    setHotsLiberarStep(null);
+    setHotsUser("");
     await loadHotsAccessList();
   }
 
@@ -1154,28 +1303,29 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
     scope: "profile" | "social",
     socialKey?: "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
   ) {
-    const confirmed = window.confirm(
-      scope === "profile"
-        ? `Remover acesso de @${username} para perfil ${profileKey}?`
-        : `Remover acesso de @${username} para ${HOTS_SOCIAL_LABELS[socialKey ?? "instagram"]} (${profileKey})?`,
-    );
-    if (!confirmed) return;
-    const response = await fetch("/api/hots-access", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, profileKey, scope, socialKey }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setHotsMessage(String(data.error ?? "Falha ao remover acesso."));
-      return;
+    const itemKey = hotsAccessItemKey({ username, profileKey, scope, socialKey });
+    setHotsRemoveBusyKey(itemKey);
+    try {
+      const response = await fetch("/api/hots-access", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, profileKey, scope, socialKey }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setHotsMessage(String(data.error ?? "Falha ao remover acesso."));
+        return;
+      }
+      setHotsRemoveConfirmKey(null);
+      setHotsMessage(
+        scope === "profile"
+          ? `Acesso removido: @${username} (${profileKey}).`
+          : `Acesso removido: @${username} (${HOTS_SOCIAL_LABELS[socialKey ?? "instagram"]}).`,
+      );
+      await loadHotsAccessList();
+    } finally {
+      setHotsRemoveBusyKey(null);
     }
-    setHotsMessage(
-      scope === "profile"
-        ? `Acesso removido: @${username} (${profileKey}).`
-        : `Acesso removido: @${username} (${HOTS_SOCIAL_LABELS[socialKey ?? "instagram"]}).`,
-    );
-    await loadHotsAccessList();
   }
 
   async function handleSaveHotsCredentials(event: FormEvent<HTMLFormElement>) {
@@ -1312,69 +1462,165 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
       : goalsUsers.find((item) => item.username === memberManageUsername) ?? null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FDF2F5] p-6">
-      <div className="mx-auto my-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_1fr]">
-        <aside className="rounded-3xl border border-[#F8BBD0] bg-[#FCE4EC] p-4 shadow-lg shadow-[#F48FB122]">
-          <h2 className="mb-4 text-xl text-[#A64D79]">Admin Bel</h2>
-          <nav className="grid gap-2">
-            <button onClick={() => setActiveSection("dashboard")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "dashboard" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Dashboard</button>
-            <button onClick={() => setActiveSection("comprovantes")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "comprovantes" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Comprovantes</button>
-            <button onClick={() => setActiveSection("tabela")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "tabela" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Tabela</button>
-            <button onClick={() => setActiveSection("membros")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "membros" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Membros</button>
-            <button onClick={() => setActiveSection("usuarios")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "usuarios" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Usuarios</button>
-            <button onClick={() => setActiveSection("indicacoes")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "indicacoes" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Indicacoes</button>
-            <button onClick={() => setActiveSection("saques")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "saques" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Saques</button>
-            <button onClick={() => setActiveSection("gerenciar-multas")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "gerenciar-multas" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Gerenciar Multas</button>
-            <button onClick={() => setActiveSection("hots")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "hots" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Hots</button>
-            <button onClick={() => setActiveSection("configuracoes")} className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "configuracoes" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}>Configuracoes</button>
-          </nav>
-          <button
-            onClick={handleLogout}
-            className="mt-6 w-full rounded-xl bg-[#F48FB1] px-3 py-2 text-xs text-white hover:brightness-95"
-          >
-            Sair
-          </button>
-        </aside>
+    <main className="admin-kawaii-shell min-h-screen p-5 sm:p-6">
+      <div className="mx-auto flex w-full max-w-6xl items-start gap-5 sm:gap-6">
+        <div className="relative w-[292px] shrink-0">
+          <aside className="admin-kawaii-sidebar relative flex h-[calc(100vh-2.5rem)] w-[292px] flex-col px-4 pb-4 pt-8">
+            <img
+              src="https://i.imgur.com/0aC5acc.png"
+              alt="Laco decorativo"
+              className="pointer-events-none absolute left-1/2 top-0 z-50 w-10 -translate-x-[calc(50%+2.5cm)] -translate-y-[38%] scale-[1.45] select-none"
+              draggable={false}
+            />
+
+            <header className="relative mb-4 shrink-0 text-center">
+              <p className="translate-x-[0.4cm] translate-y-[0.3cm] text-[15px] font-semibold leading-tight text-[#B85C7A]">
+                Olá, Admin Bel!{" "}
+                <span className="inline-block text-[13px]" aria-hidden>
+                  🐰 💕
+                </span>
+              </p>
+              <div className="relative mx-auto mt-2 h-[118px] w-full max-w-[248px]">
+                <img
+                  src="https://i.imgur.com/rlJzAf6.png"
+                  alt="Bichinhos decorativos"
+                  className="mx-auto w-full max-w-none -translate-x-[calc(5%-0.23cm)] translate-y-[0.35cm] scale-[1.224] select-none"
+                  draggable={false}
+                />
+              </div>
+            </header>
+
+            <nav className="admin-kawaii-nav-scroll grid min-h-0 flex-1 gap-1.5">
+              {ADMIN_NAV_ITEMS.map((item) => {
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveSection(item.id)}
+                    className={`admin-kawaii-nav-btn h-11 shrink-0 gap-2.5 px-3.5 text-left text-[13px] font-semibold ${
+                      isActive
+                        ? "is-active"
+                        : "bg-[#FDF7F7] text-[#B85C7A]"
+                    }`}
+                  >
+                    <AdminNavIcon name={item.icon} active={isActive} />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <AdminNavDeco
+                      deco={item.deco}
+                      isHotsActive={item.id === "hots" && isActive}
+                      active={isActive}
+                    />
+                  </button>
+                );
+              })}
+            </nav>
+
+            <button
+              onClick={handleLogout}
+              className="admin-kawaii-logout relative mt-3 flex h-11 shrink-0 items-center justify-center bg-[#FADCE8] px-4 text-[13px] font-semibold text-[#B85C7A]"
+            >
+              Sair
+              <svg
+                className="absolute right-4"
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#B85C7A"
+                strokeWidth="2"
+              >
+                <path d="M10 7V5a2 2 0 0 1 2-2h7v16h-7a2 2 0 0 1-2-2v-2" />
+                <path d="M14 12H4" />
+                <path d="m7 9-3 3 3 3" />
+              </svg>
+            </button>
+
+            <div className="relative mt-3 flex shrink-0 justify-center">
+              <span className="pointer-events-none absolute left-[16%] top-[10%] text-[9px] text-[#F08AAF] opacity-80">
+                ✦
+              </span>
+              <span className="pointer-events-none absolute right-[18%] top-[14%] text-[9px] text-[#F08AAF] opacity-80">
+                ♡
+              </span>
+              <span className="pointer-events-none absolute bottom-[22%] left-[22%] text-[9px] text-[#F08AAF] opacity-80">
+                ✦
+              </span>
+              <span className="pointer-events-none absolute bottom-[24%] right-[20%] text-[9px] text-[#F08AAF] opacity-80">
+                ♡
+              </span>
+              <img
+                src="https://i.imgur.com/TGUunsj.png"
+                alt="Pusheen decorativa"
+                className="h-[5.5rem] w-auto select-none object-contain"
+                draggable={false}
+              />
+            </div>
+          </aside>
+        </div>
 
         <section
           key={activeSection}
-          className="panel-content-enter rounded-3xl border border-[#F8BBD0] bg-white p-6 shadow-lg shadow-[#F48FB122]"
+          className="admin-kawaii-panel panel-content-enter min-w-0 flex-1 p-6"
         >
           {activeSection === "dashboard" ? (
             <>
               <h3 className="text-2xl text-[#A64D79]">Dashboard de vendas</h3>
-              <p className="mt-2 text-sm text-[#B885A3]">
-                Visao geral de todos os comprovantes (equipe + Bel). Mesmo estilo de onda do painel
-                dos usuarios, com destaque no total em R$ no periodo.
+              <p className="mt-2 text-sm leading-relaxed text-[#B885A3]">
+                Visao geral de todos os comprovantes (equipe + Bel).
+                <br />
+                Mesmo estilo de onda do painel dos usuarios
+                <br />
+                com destaque no total em R$ no periodo.
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(Object.keys(ADMIN_DASHBOARD_DAYS) as (keyof typeof ADMIN_DASHBOARD_DAYS)[]).map(
-                  (key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        setAdminHoveredChartIndex(null);
-                        setAdminDashboardTab(key);
-                      }}
-                      className={`min-h-9 shrink-0 rounded-full px-3 py-1.5 text-xs hover:brightness-[0.98] ${adminDashboardTab === key ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                    >
-                      {ADMIN_RANKING_LABELS[key]}
-                    </button>
-                  ),
-                )}
+              <div className="mt-1.5 flex flex-wrap -translate-y-[1cm] items-end justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(ADMIN_DASHBOARD_DAYS) as (keyof typeof ADMIN_DASHBOARD_DAYS)[]).map(
+                    (key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setAdminHoveredChartIndex(null);
+                          setAdminDashboardTab(key);
+                        }}
+                        className={`min-h-9 shrink-0 rounded-full px-3 py-1.5 text-xs hover:brightness-[0.98] ${adminDashboardTab === key ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
+                      >
+                        {ADMIN_RANKING_LABELS[key]}
+                      </button>
+                    ),
+                  )}
+                </div>
+                <img
+                  src="https://i.imgur.com/1fhgxx8.png"
+                  alt="Ursinho decorativo"
+                  className="pointer-events-none h-20 w-auto shrink-0 origin-bottom translate-y-[0.80cm] scale-[1.719] select-none object-contain sm:h-24"
+                  draggable={false}
+                />
               </div>
-              <article className="mt-4 rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
-                <p className="text-sm font-medium uppercase tracking-wide text-[#B885A3]">
-                  Total vendido no periodo (soma dos valores dos comprovantes)
-                </p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
-                  R$ {adminTotalSold.toFixed(2)}
-                </p>
-                <p className="mt-2 text-xs text-[#B885A3]">
-                  Periodo: {ADMIN_RANKING_LABELS[adminDashboardTab]}. Inclui todos os envios
-                  registrados no site.
-                </p>
+              <div className="-translate-y-[1cm]">
+              <article className="relative mt-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
+                      <PastelHeart />
+                      Total vendido no periodo (soma dos valores dos comprovantes)
+                    </p>
+                    <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
+                      R$ {adminTotalSold.toFixed(2)}
+                    </p>
+                    <p className="mt-2 text-xs text-[#B885A3]">
+                      Periodo: {ADMIN_RANKING_LABELS[adminDashboardTab]}. Inclui todos os envios
+                      registrados no site.
+                    </p>
+                  </div>
+                  <img
+                    src="https://i.imgur.com/EajDxag.png"
+                    alt="Bichinhos decorativos"
+                    className="pointer-events-none h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:h-28"
+                    draggable={false}
+                  />
+                </div>
               </article>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <article className="rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4">
@@ -1403,7 +1649,8 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                         key={`dash-proof-${proof.id}`}
                         className="flex items-center justify-between rounded-xl border border-[#F8BBD0AA] bg-white px-3 py-2 text-sm"
                       >
-                        <span className="text-[#A64D79]">
+                        <span className="inline-flex items-center gap-1.5 text-[#A64D79]">
+                          <PastelHeart />
                           {new Date(proof.createdAt).toLocaleString("pt-BR")}
                         </span>
                         <strong className="text-[#F48FB1]">
@@ -1542,6 +1789,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                     </>
                   ) : null}
                 </svg>
+              </div>
               </div>
             </>
           ) : null}
@@ -2939,14 +3187,25 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
               <div className="mt-4 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setHotsTab("liberar")}
+                  onClick={() => {
+                    setHotsTab("liberar");
+                    setHotsLiberarStep(null);
+                    setHotsUser("");
+                    setHotsMessage("");
+                    setHotsRemoveConfirmKey(null);
+                  }}
                   className={`rounded-full px-4 py-2 text-sm ${hotsTab === "liberar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
                 >
                   Liberar Hots
                 </button>
                 <button
                   type="button"
-                  onClick={() => setHotsTab("modificar")}
+                  onClick={() => {
+                    setHotsTab("modificar");
+                    setHotsLiberarStep(null);
+                    setHotsMessage("");
+                    setHotsRemoveConfirmKey(null);
+                  }}
                   className={`rounded-full px-4 py-2 text-sm ${hotsTab === "modificar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
                 >
                   Modificar Hots
@@ -2962,7 +3221,13 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                         <button
                           key={user}
                           type="button"
-                          onClick={() => setHotsUser(user)}
+                          onClick={() => {
+                            setHotsUser(user);
+                            setHotsLiberarStep("profile");
+                            setHotsProfile("loira");
+                            setHotsSocial("instagram");
+                            setHotsMessage("");
+                          }}
                           className={`flex min-h-[3.25rem] items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition hover:brightness-[0.98] ${
                             hotsUser === user
                               ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79] ring-2 ring-[#F8BBD0]"
@@ -2975,55 +3240,138 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                       ))}
                     </div>
                   </div>
-                  <form className="grid gap-3 rounded-xl border border-[#F8BBD0] bg-white p-3" onSubmit={handleReleaseHotsAccess}>
-                    <p className="text-sm font-medium text-[#A64D79]">Liberar perfil completo</p>
-                    <select
-                      className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                      value={hotsProfile}
-                      onChange={(event) =>
-                        setHotsProfile(event.target.value === "morena" ? "morena" : "loira")
-                      }
-                    >
-                      <option value="loira">Perfil loira</option>
-                      <option value="morena">Perfil morena</option>
-                    </select>
-                    <button className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95">
-                      Liberar perfil para @{hotsUser}
-                    </button>
-                  </form>
-                  <form className="grid gap-3 rounded-xl border border-[#F8BBD0] bg-white p-3" onSubmit={handleReleaseHotsSocialAccess}>
-                    <p className="text-sm font-medium text-[#A64D79]">Liberar rede social especifica</p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <select
-                        className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                        value={hotsProfile}
-                        onChange={(event) =>
-                          setHotsProfile(event.target.value === "morena" ? "morena" : "loira")
-                        }
-                      >
-                        <option value="loira">Perfil loira</option>
-                        <option value="morena">Perfil morena</option>
-                      </select>
-                      <select
-                        className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                        value={hotsSocial}
-                        onChange={(event) =>
-                          setHotsSocial(
-                            event.target.value as "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
-                          )
-                        }
-                      >
-                        {Object.entries(HOTS_SOCIAL_LABELS).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
+
+                  {hotsLiberarStep && hotsUser ? (
+                    <div className="rounded-2xl border border-[#F8BBD0] bg-[#FDF2F5] p-4 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#B885A3]">
+                            Liberando para @{hotsUser}
+                          </p>
+                          <p className="mt-1 text-sm text-[#A64D79]">
+                            {hotsLiberarStep === "profile"
+                              ? "Etapa 1 de 2 — escolha o perfil"
+                              : "Etapa 2 de 2 — escolha a rede social"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHotsLiberarStep(null);
+                            setHotsUser("");
+                            setHotsMessage("");
+                          }}
+                          className="rounded-full border border-[#F8BBD0] bg-white px-3 py-1 text-xs text-[#A64D79] hover:brightness-[0.98]"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+
+                      <div className="mb-5 flex items-center gap-2">
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                            hotsLiberarStep === "profile"
+                              ? "bg-[#F48FB1] text-white"
+                              : "bg-[#F48FB1] text-white"
+                          }`}
+                        >
+                          1
+                        </span>
+                        <span className="h-px flex-1 bg-[#F8BBD0]" />
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                            hotsLiberarStep === "social"
+                              ? "bg-[#F48FB1] text-white"
+                              : "border border-[#F8BBD0] bg-white text-[#B885A3]"
+                          }`}
+                        >
+                          2
+                        </span>
+                      </div>
+
+                      {hotsLiberarStep === "profile" ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHotsProfile("loira");
+                              setHotsLiberarStep("social");
+                            }}
+                            className={`rounded-2xl border px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
+                              hotsProfile === "loira"
+                                ? "border-[#F48FB1] bg-white text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                                : "border-[#F8BBD0] bg-white text-[#A64D79]"
+                            }`}
+                          >
+                            Perfil loira
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHotsProfile("morena");
+                              setHotsLiberarStep("social");
+                            }}
+                            className={`rounded-2xl border px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
+                              hotsProfile === "morena"
+                                ? "border-[#F48FB1] bg-white text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                                : "border-[#F8BBD0] bg-white text-[#A64D79]"
+                            }`}
+                          >
+                            Perfil morena
+                          </button>
+                        </div>
+                      ) : null}
+
+                      {hotsLiberarStep === "social" ? (
+                        <div className="grid gap-4">
+                          <div className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-3 text-sm text-[#A64D79]">
+                            Perfil selecionado:{" "}
+                            <span className="font-semibold">
+                              {hotsProfile === "loira" ? "Loira" : "Morena"}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            {(
+                              Object.entries(HOTS_SOCIAL_LABELS) as [
+                                "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
+                                string,
+                              ][]
+                            ).map(([key, label]) => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setHotsSocial(key)}
+                                className={`rounded-xl border px-3 py-3 text-sm font-medium transition hover:brightness-[0.98] ${
+                                  hotsSocial === key
+                                    ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                                    : "border-[#F8BBD0] bg-white text-[#A64D79]"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setHotsLiberarStep("profile")}
+                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79] hover:brightness-[0.98]"
+                            >
+                              Voltar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void releaseHotsSocialAccess()}
+                              className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95"
+                            >
+                              Liberar {HOTS_SOCIAL_LABELS[hotsSocial]} para @{hotsUser}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
-                    <button className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95">
-                      Liberar rede para @{hotsUser}
-                    </button>
-                  </form>
+                  ) : null}
+
                   {hotsMessage ? <p className="text-sm text-[#A64D79]">{hotsMessage}</p> : null}
                 </div>
               ) : null}
@@ -3109,9 +3457,14 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
               ) : null}
 
               <div className="mt-5 grid gap-3">
-                {hotsAccessList.map((item) => (
+                {hotsAccessList.map((item) => {
+                  const itemKey = hotsAccessItemKey(item);
+                  const isConfirmingRemove = hotsRemoveConfirmKey === itemKey;
+                  const isRemoving = hotsRemoveBusyKey === itemKey;
+
+                  return (
                   <article
-                    key={`${item.username}-${item.profileKey}-${item.scope}-${item.socialKey ?? "none"}`}
+                    key={itemKey}
                     className="flex items-start gap-3 rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4"
                   >
                     <UserAvatar username={item.username} className="h-10 w-10 shrink-0" />
@@ -3124,23 +3477,48 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                         Atualizado em {new Date(item.updatedAt).toLocaleString("pt-BR")} por{" "}
                         {item.updatedBy}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleRemoveHotsAccess(
-                            item.username,
-                            item.profileKey,
-                            item.scope,
-                            item.socialKey,
-                          )
-                        }
-                        className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs text-red-800 hover:bg-red-100"
-                      >
-                        Remover acesso
-                      </button>
+                      {isConfirmingRemove ? (
+                        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+                          <p className="text-sm text-red-900">{hotsRemoveConfirmMessage(item)}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={isRemoving}
+                              onClick={() =>
+                                void handleRemoveHotsAccess(
+                                  item.username,
+                                  item.profileKey,
+                                  item.scope,
+                                  item.socialKey,
+                                )
+                              }
+                              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                              {isRemoving ? "Removendo..." : "Sim, remover"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isRemoving}
+                              onClick={() => setHotsRemoveConfirmKey(null)}
+                              className="rounded-lg border border-[#F8BBD0] bg-white px-3 py-1.5 text-xs text-[#A64D79] hover:brightness-[0.98] disabled:opacity-60"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setHotsRemoveConfirmKey(itemKey)}
+                          className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs text-red-800 hover:bg-red-100"
+                        >
+                          Remover acesso
+                        </button>
+                      )}
                     </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : null}

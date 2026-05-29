@@ -28,9 +28,17 @@ function getMongoUri() {
 function toFriendlyMongoError(message: string) {
   const lower = message.toLowerCase();
   if (lower.includes("authentication failed") || lower.includes("bad auth")) {
-    return "Autenticacao do MongoDB falhou. Confira usuario e senha em MONGODB_URI (na Vercel). Se a senha tiver @, # ou %, use a versao codificada na URL.";
+    return "Autenticacao do MongoDB falhou. Confira usuario e senha em MONGODB_URI. Se a senha tiver @, # ou %, use a versao codificada na URL.";
+  }
+  if (lower.includes("querysrv econnrefused")) {
+    return "Falha DNS ao resolver mongodb+srv no localhost. Use MONGODB_URI no formato mongodb:// (sem +srv) no arquivo .env.";
   }
   return message;
+}
+
+function isSrvDnsError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return message.includes("querysrv econnrefused");
 }
 
 function getMongoDbName() {
@@ -38,13 +46,36 @@ function getMongoDbName() {
   return name && name.length > 0 ? name : "hots";
 }
 
+async function connectMongoClient(): Promise<MongoClient> {
+  const options = {
+    serverSelectionTimeoutMS: 15_000,
+    maxPoolSize: 10,
+  };
+
+  const primaryUri = getMongoUri();
+  const fallbackUri = cleanEnv(process.env.MONGODB_URI_STANDARD);
+
+  try {
+    const client = new MongoClient(primaryUri, options);
+    await client.connect();
+    return client;
+  } catch (error) {
+    if (
+      isSrvDnsError(error) &&
+      fallbackUri &&
+      fallbackUri !== primaryUri
+    ) {
+      const client = new MongoClient(fallbackUri, options);
+      await client.connect();
+      return client;
+    }
+    throw error;
+  }
+}
+
 function getMongoClientPromise(): Promise<MongoClient> {
   if (!globalWithMongo.mongoClientPromise) {
-    const client = new MongoClient(getMongoUri(), {
-      serverSelectionTimeoutMS: 15_000,
-      maxPoolSize: 10,
-    });
-    globalWithMongo.mongoClientPromise = client.connect().catch((err) => {
+    globalWithMongo.mongoClientPromise = connectMongoClient().catch((err) => {
       globalWithMongo.mongoClientPromise = undefined;
       throw err;
     });
