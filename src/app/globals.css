@@ -49,15 +49,32 @@ body {
 }
 
 .admin-kawaii-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--hots-sidebar);
   border: 1px solid var(--hots-border);
   border-radius: 30px;
   box-shadow: 0 10px 32px var(--hots-shadow);
 }
 
+.admin-kawaii-nav-area {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
 .admin-kawaii-nav-scroll {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 0.625rem;
   overflow-x: hidden;
   overflow-y: auto;
+  padding: 0.25rem 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(240, 138, 175, 0.35) transparent;
 }
@@ -119,6 +136,14 @@ body {
 .admin-kawaii-logout:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(240, 138, 175, 0.16);
+}
+
+.admin-kawaii-sidebar-footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
 }
 
 .admin-kawaii-panel {

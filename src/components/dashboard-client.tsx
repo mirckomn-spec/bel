@@ -388,6 +388,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
   const [hotsAccessList, setHotsAccessList] = useState<HotsAccessItem[]>([]);
   const [hotsTab, setHotsTab] = useState<"liberar" | "modificar">("liberar");
   const [hotsLiberarStep, setHotsLiberarStep] = useState<null | "profile" | "social">(null);
+  const [hotsModificarStep, setHotsModificarStep] = useState<null | "social" | "edit">(null);
   const [hotsRemoveConfirmKey, setHotsRemoveConfirmKey] = useState<string | null>(null);
   const [hotsRemoveBusyKey, setHotsRemoveBusyKey] = useState<string | null>(null);
   const [hotsConfigProfile, setHotsConfigProfile] = useState<"loira" | "morena">("loira");
@@ -1328,8 +1329,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
     }
   }
 
-  async function handleSaveHotsCredentials(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveHotsCredentials() {
     setHotsMessage("");
     const response = await fetch("/api/hots-access", {
       method: "POST",
@@ -1351,7 +1351,9 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
       setHotsMessage(String(data.error ?? "Falha ao salvar credenciais."));
       return;
     }
-    setHotsMessage(`Credenciais do perfil ${hotsConfigProfile} atualizadas.`);
+    setHotsMessage(
+      `Credenciais de ${HOTS_SOCIAL_LABELS[hotsConfigSocial]} (${hotsConfigProfile}) atualizadas.`,
+    );
     await loadHotsAccessList();
   }
 
@@ -1490,7 +1492,8 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
               </div>
             </header>
 
-            <nav className="admin-kawaii-nav-scroll grid min-h-0 flex-1 gap-1.5">
+            <div className="admin-kawaii-nav-area">
+              <nav className="admin-kawaii-nav-scroll">
               {ADMIN_NAV_ITEMS.map((item) => {
                 const isActive = activeSection === item.id;
                 return (
@@ -1514,11 +1517,13 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                   </button>
                 );
               })}
-            </nav>
+              </nav>
+            </div>
 
+            <div className="admin-kawaii-sidebar-footer">
             <button
               onClick={handleLogout}
-              className="admin-kawaii-logout relative mt-3 flex h-11 shrink-0 items-center justify-center bg-[#FADCE8] px-4 text-[13px] font-semibold text-[#B85C7A]"
+              className="admin-kawaii-logout relative flex h-11 shrink-0 items-center justify-center bg-[#FADCE8] px-4 text-[13px] font-semibold text-[#B85C7A]"
             >
               Sair
               <svg
@@ -1536,7 +1541,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
               </svg>
             </button>
 
-            <div className="relative mt-3 flex shrink-0 justify-center">
+            <div className="relative flex shrink-0 justify-center">
               <span className="pointer-events-none absolute left-[16%] top-[10%] text-[9px] text-[#F08AAF] opacity-80">
                 ✦
               </span>
@@ -1555,6 +1560,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                 className="h-[5.5rem] w-auto select-none object-contain"
                 draggable={false}
               />
+            </div>
             </div>
           </aside>
         </div>
@@ -3180,36 +3186,48 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
 
           {activeSection === "hots" ? (
             <>
-              <h3 className="text-2xl text-[#A64D79]">Hots</h3>
-              <p className="mt-2 text-sm text-[#B885A3]">
-                Gerencie liberacoes e credenciais dos perfis loira e morena.
-              </p>
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHotsTab("liberar");
-                    setHotsLiberarStep(null);
-                    setHotsUser("");
-                    setHotsMessage("");
-                    setHotsRemoveConfirmKey(null);
-                  }}
-                  className={`rounded-full px-4 py-2 text-sm ${hotsTab === "liberar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                >
-                  Liberar Hots
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHotsTab("modificar");
-                    setHotsLiberarStep(null);
-                    setHotsMessage("");
-                    setHotsRemoveConfirmKey(null);
-                  }}
-                  className={`rounded-full px-4 py-2 text-sm ${hotsTab === "modificar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                >
-                  Modificar Hots
-                </button>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-2xl text-[#A64D79]">Hots</h3>
+                  <p className="mt-2 text-sm text-[#B885A3]">
+                    Gerencie liberacoes e credenciais dos perfis loira e morena.
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHotsTab("liberar");
+                        setHotsLiberarStep(null);
+                        setHotsModificarStep(null);
+                        setHotsUser("");
+                        setHotsMessage("");
+                        setHotsRemoveConfirmKey(null);
+                      }}
+                      className={`rounded-full px-4 py-2 text-sm ${hotsTab === "liberar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
+                    >
+                      Liberar Hots
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHotsTab("modificar");
+                        setHotsLiberarStep(null);
+                        setHotsModificarStep(null);
+                        setHotsMessage("");
+                        setHotsRemoveConfirmKey(null);
+                      }}
+                      className={`rounded-full px-4 py-2 text-sm ${hotsTab === "modificar" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
+                    >
+                      Modificar Hots
+                    </button>
+                  </div>
+                </div>
+                <img
+                  src="https://i.imgur.com/ySPVIpY.png"
+                  alt="Pusheen decorativa"
+                  className="pointer-events-none h-24 w-auto shrink-0 origin-top -translate-x-[0.3cm] translate-y-[0.33cm] scale-[1.32] select-none object-contain sm:h-28"
+                  draggable={false}
+                />
               </div>
 
               {hotsTab === "liberar" ? (
@@ -3377,83 +3395,174 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
               ) : null}
 
               {hotsTab === "modificar" ? (
-                <form className="mt-6 grid gap-4" onSubmit={handleSaveHotsCredentials}>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => setHotsConfigProfile("loira")}
-                      className={`rounded-xl border px-4 py-3 text-sm ${hotsConfigProfile === "loira" ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79]" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                    >
-                      Perfil loira
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setHotsConfigProfile("morena")}
-                      className={`rounded-xl border px-4 py-3 text-sm ${hotsConfigProfile === "morena" ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79]" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                    >
-                      Perfil morena
-                    </button>
+                <div className="mt-6 grid gap-4">
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-[#A64D79]">Escolha o perfil</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHotsConfigProfile("loira");
+                          setHotsModificarStep("social");
+                          setHotsConfigSocial("instagram");
+                          setHotsMessage("");
+                        }}
+                        className={`rounded-2xl px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
+                          hotsConfigProfile === "loira" && hotsModificarStep
+                            ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                            : "border border-[#F8BBD0] bg-white text-[#A64D79]"
+                        }`}
+                      >
+                        Perfil loira
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHotsConfigProfile("morena");
+                          setHotsModificarStep("social");
+                          setHotsConfigSocial("instagram");
+                          setHotsMessage("");
+                        }}
+                        className={`rounded-2xl px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
+                          hotsConfigProfile === "morena" && hotsModificarStep
+                            ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                            : "border border-[#F8BBD0] bg-white text-[#A64D79]"
+                        }`}
+                      >
+                        Perfil morena
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    value={hotsLoginInput}
-                    onChange={(event) => setHotsLoginInput(event.target.value)}
-                    className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                    placeholder="Login do perfil selecionado"
-                    required
-                  />
-                  <input
-                    value={hotsPasswordInput}
-                    onChange={(event) => setHotsPasswordInput(event.target.value)}
-                    className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                    placeholder="Senha do perfil selecionado"
-                    required
-                  />
-                  <input
-                    value={hotsImageUrlInput}
-                    onChange={(event) => setHotsImageUrlInput(event.target.value)}
-                    className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                    placeholder="URL da foto do perfil selecionado"
-                  />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <select
-                      className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                      value={hotsConfigSocial}
-                      onChange={(event) =>
-                        setHotsConfigSocial(
-                          event.target.value as "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
-                        )
-                      }
-                    >
-                      {Object.entries(HOTS_SOCIAL_LABELS).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={hotsSocialUrlInput}
-                      onChange={(event) => setHotsSocialUrlInput(event.target.value)}
-                      className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                      placeholder="URL da rede social selecionada"
-                    />
-                  </div>
-                  <input
-                    value={hotsSocialLoginInput}
-                    onChange={(event) => setHotsSocialLoginInput(event.target.value)}
-                    className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                    placeholder="Login da rede social selecionada"
-                  />
-                  <input
-                    value={hotsSocialPasswordInput}
-                    onChange={(event) => setHotsSocialPasswordInput(event.target.value)}
-                    className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                    placeholder="Senha da rede social selecionada"
-                  />
-                  <button className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95">
-                    Salvar credenciais de {hotsConfigProfile}
-                  </button>
+
+                  {hotsModificarStep ? (
+                    <div className="rounded-2xl border border-[#F8BBD0] bg-[#FDF2F5] p-4 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-[#B885A3]">
+                            Editando perfil {hotsConfigProfile}
+                          </p>
+                          <p className="mt-1 text-sm text-[#A64D79]">
+                            {hotsModificarStep === "social"
+                              ? "Etapa 1 de 2 — escolha a rede social"
+                              : `Etapa 2 de 2 — credenciais de ${HOTS_SOCIAL_LABELS[hotsConfigSocial]}`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHotsModificarStep(null);
+                            setHotsMessage("");
+                          }}
+                          className="rounded-full border border-[#F8BBD0] bg-white px-3 py-1 text-xs text-[#A64D79] hover:brightness-[0.98]"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+
+                      <div className="mb-5 flex items-center gap-2">
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                            hotsModificarStep === "social"
+                              ? "bg-[#F48FB1] text-white"
+                              : "bg-[#F48FB1] text-white"
+                          }`}
+                        >
+                          1
+                        </span>
+                        <span className="h-px flex-1 bg-[#F8BBD0]" />
+                        <span
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                            hotsModificarStep === "edit"
+                              ? "bg-[#F48FB1] text-white"
+                              : "border border-[#F8BBD0] bg-white text-[#B885A3]"
+                          }`}
+                        >
+                          2
+                        </span>
+                      </div>
+
+                      {hotsModificarStep === "social" ? (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {(
+                            Object.entries(HOTS_SOCIAL_LABELS) as [
+                              "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
+                              string,
+                            ][]
+                          ).map(([key, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                setHotsConfigSocial(key);
+                                setHotsModificarStep("edit");
+                              }}
+                              className={`rounded-xl border px-3 py-3 text-sm font-medium transition hover:brightness-[0.98] ${
+                                hotsConfigSocial === key
+                                  ? "border-[#F48FB1] bg-[#FFFFFF] text-[#A64D79] ring-2 ring-[#F8BBD0]"
+                                  : "border-[#F8BBD0] bg-white text-[#A64D79]"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {hotsModificarStep === "edit" ? (
+                        <form
+                          className="grid gap-3"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void saveHotsCredentials();
+                          }}
+                        >
+                          <div className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-3 text-sm text-[#A64D79]">
+                            Perfil:{" "}
+                            <span className="font-semibold capitalize">{hotsConfigProfile}</span>
+                            {" · "}
+                            Rede:{" "}
+                            <span className="font-semibold">{HOTS_SOCIAL_LABELS[hotsConfigSocial]}</span>
+                          </div>
+                          <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                            Login
+                            <input
+                              value={hotsSocialLoginInput}
+                              onChange={(event) => setHotsSocialLoginInput(event.target.value)}
+                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
+                              placeholder="Login atual ou novo login"
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                            Senha
+                            <input
+                              value={hotsSocialPasswordInput}
+                              onChange={(event) => setHotsSocialPasswordInput(event.target.value)}
+                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
+                              placeholder="Senha atual ou nova senha"
+                            />
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setHotsModificarStep("social")}
+                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79] hover:brightness-[0.98]"
+                            >
+                              Voltar
+                            </button>
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95"
+                            >
+                              Salvar {HOTS_SOCIAL_LABELS[hotsConfigSocial]} ({hotsConfigProfile})
+                            </button>
+                          </div>
+                        </form>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {hotsMessage ? <p className="text-sm text-[#A64D79]">{hotsMessage}</p> : null}
-                </form>
+                </div>
               ) : null}
 
               <div className="mt-5 grid gap-3">
@@ -3478,8 +3587,8 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                         {item.updatedBy}
                       </p>
                       {isConfirmingRemove ? (
-                        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
-                          <p className="text-sm text-red-900">{hotsRemoveConfirmMessage(item)}</p>
+                        <div className="mt-3 rounded-xl border border-[#F8BBD0] bg-[#FDF2F5] p-3">
+                          <p className="text-sm text-[#A64D79]">{hotsRemoveConfirmMessage(item)}</p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
                               type="button"
@@ -3492,7 +3601,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                                   item.socialKey,
                                 )
                               }
-                              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                              className="rounded-lg bg-[#F48FB1] px-3 py-1.5 text-xs font-medium text-white hover:brightness-95 disabled:opacity-60"
                             >
                               {isRemoving ? "Removendo..." : "Sim, remover"}
                             </button>
@@ -3510,7 +3619,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                         <button
                           type="button"
                           onClick={() => setHotsRemoveConfirmKey(itemKey)}
-                          className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs text-red-800 hover:bg-red-100"
+                          className="mt-2 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-1 text-xs text-[#A64D79] hover:bg-[#FADCE8]"
                         >
                           Remover acesso
                         </button>

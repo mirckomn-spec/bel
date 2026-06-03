@@ -137,6 +137,128 @@ type PainelSection =
   | "metas"
   | "hots";
 
+const MEMBER_NAV_ITEMS: {
+  id: PainelSection;
+  label: string;
+  icon: "home" | "file" | "grid" | "info" | "gavel" | "star" | "flame";
+  deco: "heart" | "bow";
+}[] = [
+  { id: "dashboard", label: "Dashboard", icon: "home", deco: "heart" },
+  { id: "comprovantes", label: "Comprovantes", icon: "file", deco: "bow" },
+  { id: "tabela", label: "Tabela", icon: "grid", deco: "heart" },
+  { id: "explicacoes", label: "Explicacoes", icon: "info", deco: "bow" },
+  { id: "multas", label: "Multas", icon: "gavel", deco: "heart" },
+  { id: "metas", label: "Metas", icon: "star", deco: "bow" },
+  { id: "hots", label: "Hots", icon: "flame", deco: "heart" },
+];
+
+function PastelHeart({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg className={`inline-block shrink-0 ${className}`} viewBox="0 0 24 24" fill="#F8BBD0" aria-hidden>
+      <path d="M12 21s-6.2-4.4-8.3-8.1C1.8 9.6 4.2 5.5 8 5.5c2 0 3.2 1.2 4 2.4.8-1.2 2-2.4 4-2.4 3.8 0 6.2 4.1 4.3 7.4C18.2 16.6 12 21 12 21z" />
+    </svg>
+  );
+}
+
+function MemberNavIcon({
+  name,
+  active = false,
+}: {
+  name: (typeof MEMBER_NAV_ITEMS)[number]["icon"];
+  active?: boolean;
+}) {
+  const stroke = active ? "#FFFFFF" : "#B85C7A";
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: 2 };
+
+  switch (name) {
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z" />
+        </svg>
+      );
+    case "file":
+      return (
+        <svg {...common}>
+          <path d="M8 4h6l4 4v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+          <path d="M14 4v4h4" />
+        </svg>
+      );
+    case "grid":
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="6" height="6" rx="1" />
+          <rect x="14" y="4" width="6" height="6" rx="1" />
+          <rect x="4" y="14" width="6" height="6" rx="1" />
+          <rect x="14" y="14" width="6" height="6" rx="1" />
+        </svg>
+      );
+    case "info":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 10v6" />
+          <path d="M12 7h.01" strokeWidth="3" />
+        </svg>
+      );
+    case "gavel":
+      return (
+        <svg {...common}>
+          <path d="m14 4 4 4-8 8-4-4 8-8z" />
+          <path d="M5 19h14" />
+        </svg>
+      );
+    case "star":
+      return (
+        <svg {...common}>
+          <path d="M12 3.5 14.2 9l5.8.5-4.4 3.8 1.3 5.7L12 16.8 7.1 19l1.3-5.7L4 9.5l5.8-.5L12 3.5z" />
+        </svg>
+      );
+    case "flame":
+      return (
+        <svg {...common}>
+          <path d="M12 4c1 3 4 4.5 4 8a4 4 0 1 1-8 0c0-3.5 3-5 4-8z" />
+        </svg>
+      );
+  }
+}
+
+function MemberNavDeco({
+  deco,
+  isHotsActive,
+  active = false,
+}: {
+  deco: "heart" | "bow";
+  isHotsActive: boolean;
+  active?: boolean;
+}) {
+  if (isHotsActive) {
+    return (
+      <img
+        src="https://i.imgur.com/D1JcuES.png"
+        alt=""
+        className="h-6 w-6 shrink-0 object-contain"
+        draggable={false}
+      />
+    );
+  }
+  if (deco === "bow") {
+    return (
+      <img
+        src="https://i.imgur.com/0aC5acc.png"
+        alt=""
+        className="h-[18px] w-[18px] shrink-0 object-contain"
+        draggable={false}
+      />
+    );
+  }
+  return (
+    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill={active ? "#FFFFFF" : "#F08AAF"} aria-hidden>
+      <path d="M12 21s-6.2-4.4-8.3-8.1C1.8 9.6 4.2 5.5 8 5.5c2 0 3.2 1.2 4 2.4.8-1.2 2-2.4 4-2.4 3.8 0 6.2 4.1 4.3 7.4C18.2 16.6 12 21 12 21z" />
+    </svg>
+  );
+}
+
 const HOTS_PROFILE_LINKS: Record<"loira" | "morena", string> = {
   loira:
     "https://cdn.discordapp.com/attachments/1485502262779580447/1497238627154133134/image.png?ex=69eccba2&is=69eb7a22&hm=1bc042391dcea349d376ddc7e8839f78786cd33d5f003cd650034a7e078593f6&",
@@ -583,189 +705,251 @@ export default function MembrosPainelClient({
   const morenaAccess = hotsAccess.find((item) => item.profileKey === "morena") ?? null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FDF2F5] p-6">
-      <div className="mx-auto my-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-3xl border border-[#F8BBD0] bg-[#FCE4EC] p-4 shadow-lg shadow-[#F48FB122]">
-          <div className="relative">
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-xl border border-[#F8BBD0] bg-[#FFFFFF] px-3 py-2 text-left"
-              onClick={() => setProfileMenuOpen((prev) => !prev)}
-            >
-              <UserAvatar username={username} className="h-11 w-11 shrink-0" />
-              <div className="min-w-0 flex-1">
-              <p className="text-xs text-[#B885A3]">Logado como</p>
-              <p className="text-lg text-[#A64D79]">{username}</p>
-              <p className="mt-1 text-xs text-[#B885A3]">
-                Clique no nome para abrir Perfil e trocar a foto.
-              </p>
+    <main className="admin-kawaii-shell min-h-screen p-5 sm:p-6">
+      <div className="mx-auto flex w-full max-w-6xl items-start gap-5 sm:gap-6">
+        <div className="relative w-[292px] shrink-0">
+          <aside className="admin-kawaii-sidebar relative flex h-[calc(100vh-2.5rem)] w-[292px] flex-col px-4 pb-4 pt-8">
+            <img
+              src="https://i.imgur.com/0aC5acc.png"
+              alt="Laco decorativo"
+              className="pointer-events-none absolute left-1/2 top-0 z-50 w-10 -translate-x-[calc(50%+2.5cm)] -translate-y-[38%] scale-[1.45] select-none"
+              draggable={false}
+            />
+
+            <header className="relative mb-4 shrink-0 text-center">
+              <button
+                type="button"
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                className="w-full text-center"
+              >
+                <p className="translate-x-[0.4cm] translate-y-[0.3cm] text-[15px] font-semibold leading-tight text-[#B85C7A]">
+                  Olá, {username}!{" "}
+                  <span className="inline-block text-[13px]" aria-hidden>
+                    🐰 💕
+                  </span>
+                </p>
+              </button>
+              {profileMenuOpen ? (
+                <div className="mx-auto mt-2 max-w-[220px] rounded-xl border border-[#F8BBD0] bg-white p-2 text-left shadow-sm">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg bg-[#FDF7F7] px-3 py-2 text-left text-sm text-[#B85C7A] hover:brightness-[0.98]"
+                    onClick={() => {
+                      setActiveSection("perfil");
+                      setProfileMenuOpen(false);
+                    }}
+                  >
+                    <UserAvatar username={username} className="h-8 w-8 shrink-0" />
+                    Perfil
+                  </button>
+                  <button
+                    type="button"
+                    className="mt-1 w-full rounded-lg bg-[#FDF7F7] px-3 py-2 text-left text-sm text-[#B85C7A] hover:brightness-[0.98]"
+                    onClick={() => {
+                      setActiveSection("indicacao");
+                      setProfileMenuOpen(false);
+                    }}
+                  >
+                    Indicacao
+                  </button>
+                </div>
+              ) : null}
+              <div className="relative mx-auto mt-2 h-[118px] w-full max-w-[248px]">
+                <img
+                  src="https://i.imgur.com/rlJzAf6.png"
+                  alt="Bichinhos decorativos"
+                  className="mx-auto w-full max-w-none -translate-x-[calc(5%-0.23cm)] translate-y-[0.35cm] scale-[1.224] select-none"
+                  draggable={false}
+                />
               </div>
-            </button>
-            {profileMenuOpen ? (
-              <div className="mt-2 rounded-xl border border-[#F8BBD0] bg-white p-2">
-                <button
-                  type="button"
-                  className="w-full rounded-lg bg-[#FFFFFF] px-3 py-2 text-left text-sm text-[#A64D79]"
-                  onClick={() => {
-                    setActiveSection("perfil");
-                    setProfileMenuOpen(false);
-                  }}
-                >
-                  Perfil
-                </button>
-                <button
-                  type="button"
-                  className="mt-1 w-full rounded-lg bg-[#FFFFFF] px-3 py-2 text-left text-sm text-[#A64D79]"
-                  onClick={() => {
-                    setActiveSection("indicacao");
-                    setProfileMenuOpen(false);
-                  }}
-                >
-                  Indicacao
-                </button>
-              </div>
-            ) : null}
-          </div>
-          <nav className="mt-5 grid gap-2">
+            </header>
+
+            <div className="admin-kawaii-nav-area">
+              <nav className="admin-kawaii-nav-scroll">
+              {MEMBER_NAV_ITEMS.map((item) => {
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveSection(item.id)}
+                    className={`admin-kawaii-nav-btn h-11 shrink-0 gap-2.5 px-3.5 text-left text-[13px] font-semibold ${
+                      isActive ? "is-active" : "bg-[#FDF7F7] text-[#B85C7A]"
+                    }`}
+                  >
+                    <MemberNavIcon name={item.icon} active={isActive} />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <MemberNavDeco
+                      deco={item.deco}
+                      isHotsActive={item.id === "hots" && isActive}
+                      active={isActive}
+                    />
+                  </button>
+                );
+              })}
+              </nav>
+            </div>
+
+            <div className="admin-kawaii-sidebar-footer">
             <button
               type="button"
-              onClick={() => setActiveSection("dashboard")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "dashboard" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
+              onClick={handleLogout}
+              className="admin-kawaii-logout relative flex h-11 shrink-0 items-center justify-center bg-[#FADCE8] px-4 text-[13px] font-semibold text-[#B85C7A]"
             >
-              Dashboard
+              Sair
+              <svg
+                className="absolute right-4"
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#B85C7A"
+                strokeWidth="2"
+              >
+                <path d="M10 7V5a2 2 0 0 1 2-2h7v16h-7a2 2 0 0 1-2-2v-2" />
+                <path d="M14 12H4" />
+                <path d="m7 9-3 3 3 3" />
+              </svg>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("comprovantes")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "comprovantes" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Comprovantes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("tabela")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "tabela" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Tabela
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("explicacoes")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "explicacoes" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Explicacoes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("multas")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "multas" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Multas
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("metas")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "metas" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Metas
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("hots")}
-              className={`sidebar-nav-stable rounded-xl border px-3 py-2 text-left text-sm hover:brightness-[0.98] ${activeSection === "hots" ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-            >
-              Hots
-            </button>
-          </nav>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="mt-6 w-full rounded-xl bg-[#F48FB1] px-3 py-2 text-xs text-white hover:brightness-95"
-          >
-            Sair
-          </button>
-        </aside>
+
+            <div className="relative flex shrink-0 justify-center">
+              <span className="pointer-events-none absolute left-[16%] top-[10%] text-[9px] text-[#F08AAF] opacity-80">
+                ✦
+              </span>
+              <span className="pointer-events-none absolute right-[18%] top-[14%] text-[9px] text-[#F08AAF] opacity-80">
+                ♡
+              </span>
+              <span className="pointer-events-none absolute bottom-[22%] left-[22%] text-[9px] text-[#F08AAF] opacity-80">
+                ✦
+              </span>
+              <span className="pointer-events-none absolute bottom-[24%] right-[20%] text-[9px] text-[#F08AAF] opacity-80">
+                ♡
+              </span>
+              <img
+                src="https://i.imgur.com/TGUunsj.png"
+                alt="Pusheen decorativa"
+                className="h-[5.5rem] w-auto select-none object-contain"
+                draggable={false}
+              />
+            </div>
+            </div>
+          </aside>
+        </div>
 
         <section
           key={activeSection}
-          className="panel-content-enter rounded-3xl border border-[#F8BBD0] bg-white p-6 shadow-lg shadow-[#F48FB122]"
+          className="admin-kawaii-panel panel-content-enter min-w-0 flex-1 p-6"
         >
           {activeSection === "dashboard" ? (
             <>
               <h2 className="text-2xl text-[#A64D79]">Dashboard</h2>
-              <p className="mt-2 text-sm text-[#B885A3]">
+              <p className="mt-2 text-sm leading-relaxed text-[#B885A3]">
                 Veja suas vendas por periodo e o valor real a receber ({commissionPercent}%).
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(Object.keys(rankingLabels) as (keyof RankingWindows)[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setDashboardTab(key)}
-                    className={`min-h-9 shrink-0 rounded-full px-3 py-1.5 text-xs hover:brightness-[0.98] ${dashboardTab === key ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
-                  >
-                    {rankingLabels[key]}
-                  </button>
-                ))}
-              </div>
-              {dashboardChartMode === "real" ? (
-                <article className="mb-4 rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#fdeee6] to-[#f7dfd4] p-6 shadow-lg shadow-[#F48FB122]">
-                  <p className="text-sm font-medium uppercase tracking-wide text-[#B885A3]">
-                    Valor real no periodo ({commissionPercent}% e multas ativas)
-                  </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-tight text-[#A64D79] sm:text-5xl">
-                    R$ {dashboardVisibleReal.toFixed(2)}
-                  </p>
-                  <p className="mt-2 text-xs text-[#B885A3]">
-                    Este e o saldo disponivel para saque agora (minimo R$ {minWithdraw.toFixed(2)}).
-                  </p>
-                  <div className="mt-3">
+              <div className="mt-1.5 flex flex-wrap -translate-y-[1cm] items-end justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(rankingLabels) as (keyof RankingWindows)[]).map((key) => (
                     <button
+                      key={key}
                       type="button"
-                      onClick={() => void handleRequestWithdraw()}
-                      disabled={!canRequestWithdraw || withdrawBusy}
-                      className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => {
+                        setHoveredChartIndex(null);
+                        setDashboardTab(key);
+                      }}
+                      className={`min-h-9 shrink-0 rounded-full px-3 py-1.5 text-xs hover:brightness-[0.98] ${dashboardTab === key ? "border-[#F48FB1] bg-[#F48FB1] text-white" : "border-[#F8BBD0] bg-white text-[#A64D79]"}`}
                     >
-                      {withdrawBusy
-                        ? "Solicitando..."
-                        : hasPendingWithdraw
-                          ? "Saque pendente"
-                          : "Solicitar Saque"}
+                      {rankingLabels[key]}
                     </button>
+                  ))}
+                </div>
+                <img
+                  src="https://i.imgur.com/1fhgxx8.png"
+                  alt="Ursinho decorativo"
+                  className="pointer-events-none h-20 w-auto shrink-0 origin-bottom translate-y-[0.80cm] scale-[1.719] select-none object-contain sm:h-24"
+                  draggable={false}
+                />
+              </div>
+              <div className="-translate-y-[1cm]">
+              {dashboardChartMode === "real" ? (
+                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
+                  <div className="flex items-end justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
+                        <PastelHeart />
+                        Valor real no periodo ({commissionPercent}% e multas ativas)
+                      </p>
+                      <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
+                        R$ {dashboardVisibleReal.toFixed(2)}
+                      </p>
+                      <p className="mt-2 text-xs text-[#B885A3]">
+                        Este e o saldo disponivel para saque agora (minimo R$ {minWithdraw.toFixed(2)}).
+                      </p>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => void handleRequestWithdraw()}
+                          disabled={!canRequestWithdraw || withdrawBusy}
+                          className="rounded-xl bg-[#F48FB1] px-4 py-2 text-sm text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {withdrawBusy
+                            ? "Solicitando..."
+                            : hasPendingWithdraw
+                              ? "Saque pendente"
+                              : "Solicitar Saque"}
+                        </button>
+                      </div>
+                      {!hasPendingWithdraw && availableToWithdraw < minWithdraw ? (
+                        <p className="mt-2 text-xs text-amber-900">
+                          Voce precisa ter pelo menos R$ {minWithdraw.toFixed(2)} disponiveis para sacar.
+                        </p>
+                      ) : null}
+                      {activePersonalPenaltyPercent > 0 ? (
+                        <p className="mt-2 text-xs text-[#B885A3]">
+                          Multas ativas em % somam{" "}
+                          <strong className="text-[#A64D79]">
+                            {activePersonalPenaltyPercent.toFixed(1)}%
+                          </strong>{" "}
+                          e reduzem o valor real exibido aqui e no grafico (ate 100%).
+                        </p>
+                      ) : null}
+                    </div>
+                    <img
+                      src="https://i.imgur.com/EajDxag.png"
+                      alt="Bichinhos decorativos"
+                      className="pointer-events-none h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:h-28"
+                      draggable={false}
+                    />
                   </div>
-                  {!hasPendingWithdraw && availableToWithdraw < minWithdraw ? (
-                    <p className="mt-2 text-xs text-amber-900">
-                      Voce precisa ter pelo menos R$ {minWithdraw.toFixed(2)} disponiveis para sacar.
-                    </p>
-                  ) : null}
-                  {activePersonalPenaltyPercent > 0 ? (
-                    <p className="mt-2 text-xs text-[#B885A3]">
-                      Multas ativas em % somam{" "}
-                      <strong className="text-[#A64D79]">
-                        {activePersonalPenaltyPercent.toFixed(1)}%
-                      </strong>{" "}
-                      e reduzem o valor real exibido aqui e no grafico (ate 100%).
-                    </p>
-                  ) : null}
                 </article>
               ) : null}
               {dashboardChartMode === "total" ? (
-                <article className="mb-4 rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
-                  <p className="text-sm font-medium uppercase tracking-wide text-[#B885A3]">
-                    Total vendido no periodo (100% — bruto dos comprovantes)
-                  </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-tight text-[#A64D79] sm:text-5xl">
-                    R$ {dashboardTotalSold.toFixed(2)}
-                  </p>
-                  <p className="mt-2 text-xs text-[#B885A3]">
-                    Este valor e o somatorio dos comprovantes no periodo selecionado acima.
-                  </p>
+                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
+                  <div className="flex items-end justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
+                        <PastelHeart />
+                        Total vendido no periodo (100% — bruto dos comprovantes)
+                      </p>
+                      <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
+                        R$ {dashboardTotalSold.toFixed(2)}
+                      </p>
+                      <p className="mt-2 text-xs text-[#B885A3]">
+                        Este valor e o somatorio dos comprovantes no periodo selecionado acima.
+                      </p>
+                    </div>
+                    <img
+                      src="https://i.imgur.com/EajDxag.png"
+                      alt="Bichinhos decorativos"
+                      className="pointer-events-none h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:h-28"
+                      draggable={false}
+                    />
+                  </div>
                 </article>
               ) : null}
-              <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <article className="rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4">
                   <p className="text-sm text-[#B885A3]">Comprovantes</p>
-                  <p className="text-2xl text-[#A64D79]">{dashboardProofsCount}</p>
+                  <p className="text-2xl font-semibold text-[#F48FB1]">{dashboardProofsCount}</p>
                 </article>
                 <article className="rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4">
                   <p className="text-sm text-[#B885A3]">
@@ -773,7 +957,7 @@ export default function MembrosPainelClient({
                       ? "Ticket medio (R$)"
                       : "Ticket real medio (R$)"}
                   </p>
-                  <p className="text-2xl text-[#A64D79]">
+                  <p className="text-2xl font-semibold text-[#F48FB1]">
                     {(dashboardChartMode === "total"
                       ? dashboardAverageTicket
                       : dashboardAverageTicket * realNetMultiplier
@@ -786,12 +970,13 @@ export default function MembrosPainelClient({
                       ? `Estimativa de comissao (${commissionPercent}%)`
                       : "Multa ativa (%)"}
                   </p>
-                  <p className="text-2xl text-[#A64D79]">
+                  <p className="text-2xl font-semibold text-[#F48FB1]">
                     {dashboardChartMode === "total"
                       ? `R$ ${(dashboardTotalSold * (commissionPercent / 100)).toFixed(2)}`
                       : `${activePersonalPenaltyPercent.toFixed(1)}%`}
                   </p>
                 </article>
+              </div>
               </div>
               <div className="mt-5 overflow-hidden rounded-3xl border border-[#F8BBD0] bg-gradient-to-b from-[#FFF8FA] to-[#FCE4EC] p-4 shadow-xl shadow-[#F48FB140]">
                 <div className="mb-3 flex items-center justify-between gap-3">
