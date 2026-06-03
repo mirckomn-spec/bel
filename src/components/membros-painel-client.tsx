@@ -397,6 +397,7 @@ export default function MembrosPainelClient({
   const [hotsAccess, setHotsAccess] = useState<UserHotsAccessItem[]>([]);
   const [openedHotProfile, setOpenedHotProfile] = useState<"loira" | "morena" | null>(null);
   const [proofCooldownRemaining, setProofCooldownRemaining] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const proofCooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -404,6 +405,19 @@ export default function MembrosPainelClient({
       if (proofCooldownTimerRef.current) clearInterval(proofCooldownTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
 
   function startProofCooldown(durationMs: number) {
     if (proofCooldownTimerRef.current) clearInterval(proofCooldownTimerRef.current);
@@ -740,14 +754,47 @@ export default function MembrosPainelClient({
   const morenaAccess = hotsAccess.find((item) => item.profileKey === "morena") ?? null;
 
   return (
-    <main className="admin-kawaii-shell min-h-screen p-5 sm:p-6">
-      <div className="mx-auto flex w-full max-w-6xl items-start gap-5 sm:gap-6">
-        <div className="relative w-[292px] shrink-0">
-          <aside className="admin-kawaii-sidebar relative flex h-[calc(100vh-2.5rem)] w-[292px] flex-col px-4 pb-4 pt-8">
+    <main className="admin-kawaii-shell min-h-screen overflow-x-hidden p-3 sm:p-5 lg:p-6">
+      <div className="admin-kawaii-mobile-bar lg:hidden">
+        <button
+          type="button"
+          className="admin-kawaii-menu-btn"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Abrir menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-[#B85C7A]">
+          Olá, {username}!
+        </p>
+      </div>
+
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className="admin-kawaii-overlay lg:hidden"
+          aria-label="Fechar menu"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
+
+      <div className="admin-kawaii-layout mx-auto w-full max-w-6xl">
+        <div className={`admin-kawaii-sidebar-wrap ${mobileNavOpen ? "is-open" : ""}`}>
+          <aside className="admin-kawaii-sidebar relative flex h-full min-h-0 w-full flex-col px-4 pb-4 pt-8 lg:h-[calc(100vh-2.5rem)] lg:w-[292px]">
+            <button
+              type="button"
+              className="admin-kawaii-drawer-close"
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Fechar menu"
+            >
+              ✕
+            </button>
             <img
               src="https://i.imgur.com/0aC5acc.png"
               alt="Laco decorativo"
-              className="pointer-events-none absolute left-1/2 top-0 z-50 w-10 -translate-x-[calc(50%+2.5cm)] -translate-y-[38%] scale-[1.45] select-none"
+              className="admin-kawaii-deco-bow pointer-events-none absolute left-1/2 top-0 z-50 w-10 -translate-x-[calc(50%+2.5cm)] -translate-y-[38%] scale-[1.45] select-none"
               draggable={false}
             />
 
@@ -789,11 +836,11 @@ export default function MembrosPainelClient({
                   </button>
                 </div>
               ) : null}
-              <div className="relative mx-auto mt-2 h-[118px] w-full max-w-[248px]">
+              <div className="admin-kawaii-sidebar-header-deco relative mx-auto mt-2 h-[118px] w-full max-w-[248px]">
                 <img
                   src="https://i.imgur.com/rlJzAf6.png"
                   alt="Bichinhos decorativos"
-                  className="mx-auto w-full max-w-none -translate-x-[calc(5%-0.23cm)] translate-y-[0.35cm] scale-[1.224] select-none"
+                  className="mx-auto w-full max-w-none -translate-x-[calc(5%-0.23cm)] translate-y-[0.35cm] scale-[1.224] select-none lg:scale-[1.224]"
                   draggable={false}
                 />
               </div>
@@ -873,7 +920,7 @@ export default function MembrosPainelClient({
 
         <section
           key={activeSection}
-          className="admin-kawaii-panel panel-content-enter min-w-0 flex-1 p-6"
+          className="admin-kawaii-panel panel-content-enter min-w-0 w-full flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-6"
         >
           {activeSection === "dashboard" ? (
             <>
@@ -881,7 +928,7 @@ export default function MembrosPainelClient({
               <p className="mt-2 text-sm leading-relaxed text-[#B885A3]">
                 Veja suas vendas por periodo e o valor real a receber ({commissionPercent}%).
               </p>
-              <div className="mt-1.5 flex flex-wrap -translate-y-[1cm] items-end justify-between gap-3">
+              <div className="mt-1.5 flex flex-wrap items-end justify-between gap-3 lg:-translate-y-[1cm]">
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(rankingLabels) as (keyof RankingWindows)[]).map((key) => (
                     <button
@@ -900,20 +947,20 @@ export default function MembrosPainelClient({
                 <img
                   src="https://i.imgur.com/1fhgxx8.png"
                   alt="Ursinho decorativo"
-                  className="pointer-events-none h-20 w-auto shrink-0 origin-bottom translate-y-[0.80cm] scale-[1.719] select-none object-contain sm:h-24"
+                  className="pointer-events-none hidden h-20 w-auto shrink-0 origin-bottom translate-y-[0.80cm] scale-[1.719] select-none object-contain sm:block sm:h-24"
                   draggable={false}
                 />
               </div>
-              <div className="-translate-y-[1cm]">
+              <div className="lg:-translate-y-[1cm]">
               {dashboardChartMode === "real" ? (
-                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
-                  <div className="flex items-end justify-between gap-4">
+                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-4 shadow-lg shadow-[#F48FB122] sm:p-6">
+                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
                         <PastelHeart />
                         Valor real no periodo ({commissionPercent}% e multas ativas)
                       </p>
-                      <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
+                      <p className="mt-2 text-3xl font-semibold tracking-tight text-[#F48FB1] sm:text-4xl lg:text-5xl">
                         R$ {dashboardVisibleReal.toFixed(2)}
                       </p>
                       <p className="mt-2 text-xs text-[#B885A3]">
@@ -951,21 +998,21 @@ export default function MembrosPainelClient({
                     <img
                       src="https://i.imgur.com/EajDxag.png"
                       alt="Bichinhos decorativos"
-                      className="pointer-events-none h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:h-28"
+                      className="pointer-events-none hidden h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:block sm:h-28"
                       draggable={false}
                     />
                   </div>
                 </article>
               ) : null}
               {dashboardChartMode === "total" ? (
-                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-6 shadow-lg shadow-[#F48FB122]">
-                  <div className="flex items-end justify-between gap-4">
+                <article className="relative mb-4 overflow-hidden rounded-3xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFFFFF] via-[#FDF2F5] to-[#FCE4EC] p-4 shadow-lg shadow-[#F48FB122] sm:p-6">
+                  <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
                         <PastelHeart />
                         Total vendido no periodo (100% — bruto dos comprovantes)
                       </p>
-                      <p className="mt-2 text-4xl font-semibold tracking-tight text-[#F48FB1] sm:text-5xl">
+                      <p className="mt-2 text-3xl font-semibold tracking-tight text-[#F48FB1] sm:text-4xl lg:text-5xl">
                         R$ {dashboardTotalSold.toFixed(2)}
                       </p>
                       <p className="mt-2 text-xs text-[#B885A3]">
@@ -975,7 +1022,7 @@ export default function MembrosPainelClient({
                     <img
                       src="https://i.imgur.com/EajDxag.png"
                       alt="Bichinhos decorativos"
-                      className="pointer-events-none h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:h-28"
+                      className="pointer-events-none hidden h-24 w-auto shrink-0 origin-bottom translate-y-[0.97cm] scale-[1.15] select-none object-contain object-bottom sm:block sm:h-28"
                       draggable={false}
                     />
                   </div>
@@ -1288,6 +1335,7 @@ export default function MembrosPainelClient({
                 ))}
               </div>
               <div className="mt-4 overflow-hidden rounded-2xl border border-[#F8BBD0]">
+                <div className="admin-kawaii-table-scroll">
                 <table className="w-full border-collapse bg-white text-left">
                   <thead className="bg-[#FFFFFF]">
                     <tr>
@@ -1341,6 +1389,7 @@ export default function MembrosPainelClient({
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </>
           ) : null}
