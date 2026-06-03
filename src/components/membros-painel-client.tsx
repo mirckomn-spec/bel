@@ -325,6 +325,14 @@ const rankingLabels: Record<keyof RankingWindows, string> = {
   d31: "Ultimos 31 dias",
 };
 
+async function safeFetch(url: string, init?: RequestInit): Promise<Response | null> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    return null;
+  }
+}
+
 function isFineActiveClient(fine: Fine): boolean {
   if (fine.durationType === "eterno") return true;
   if (!fine.expiresAt) return true;
@@ -412,39 +420,55 @@ export default function MembrosPainelClient({
   }
 
   async function loadRanking() {
-    const response = await fetch("/api/ranking");
-    if (!response.ok) return;
-    const data = (await response.json()) as RankingWindows & {
-      storage?: string;
-      warning?: string | null;
-      prizes?: Partial<RankingPrizes>;
-    };
-    const { d1, d7, d14, d31 } = data;
-    setRanking({ d1, d7, d14, d31 });
-    setRankingPrizes({
-      d1: Number(data.prizes?.d1 ?? 0),
-      d7: Number(data.prizes?.d7 ?? 0),
-      d14: Number(data.prizes?.d14 ?? 0),
-      d31: Number(data.prizes?.d31 ?? 150),
-    });
+    const response = await safeFetch("/api/ranking");
+    if (!response?.ok) return;
+    try {
+      const data = (await response.json()) as RankingWindows & {
+        storage?: string;
+        warning?: string | null;
+        prizes?: Partial<RankingPrizes>;
+      };
+      const { d1, d7, d14, d31 } = data;
+      setRanking({ d1, d7, d14, d31 });
+      setRankingPrizes({
+        d1: Number(data.prizes?.d1 ?? 0),
+        d7: Number(data.prizes?.d7 ?? 0),
+        d14: Number(data.prizes?.d14 ?? 0),
+        d31: Number(data.prizes?.d31 ?? 150),
+      });
+    } catch {
+      // JSON invalido ou resposta incompleta
+    }
   }
 
   async function loadGoals() {
-    const response = await fetch("/api/goals");
-    if (!response.ok) return;
-    setGoals((await response.json()) as GoalsResponse);
+    const response = await safeFetch("/api/goals");
+    if (!response?.ok) return;
+    try {
+      setGoals((await response.json()) as GoalsResponse);
+    } catch {
+      // ignora
+    }
   }
 
   async function loadWithdrawals() {
-    const response = await fetch("/api/withdrawals");
-    if (!response.ok) return;
-    setWithdrawalsData((await response.json()) as WithdrawalsResponse);
+    const response = await safeFetch("/api/withdrawals");
+    if (!response?.ok) return;
+    try {
+      setWithdrawalsData((await response.json()) as WithdrawalsResponse);
+    } catch {
+      // ignora
+    }
   }
 
   async function loadReferrals() {
-    const response = await fetch("/api/referrals");
-    if (!response.ok) return;
-    setReferralData((await response.json()) as ReferralOverview);
+    const response = await safeFetch("/api/referrals");
+    if (!response?.ok) return;
+    try {
+      setReferralData((await response.json()) as ReferralOverview);
+    } catch {
+      // ignora
+    }
   }
 
   useEffect(() => {
@@ -454,23 +478,30 @@ export default function MembrosPainelClient({
 
   useEffect(() => {
     async function loadExtraData() {
-      const [finesRes, goalsRes] = await Promise.all([fetch("/api/fines"), fetch("/api/goals")]);
-      if (finesRes.ok) {
-        setFines((await finesRes.json()) as Fine[]);
+      try {
+        const [finesRes, goalsRes] = await Promise.all([
+          safeFetch("/api/fines"),
+          safeFetch("/api/goals"),
+        ]);
+        if (finesRes?.ok) {
+          setFines((await finesRes.json()) as Fine[]);
+        }
+        if (goalsRes?.ok) {
+          setGoals((await goalsRes.json()) as GoalsResponse);
+        }
+        const accessRes = await safeFetch("/api/hots-access");
+        if (accessRes?.ok) {
+          const accessData = (await accessRes.json()) as UserHotsAccessItem[] | UserHotsAccessItem | null;
+          setHotsAccess(
+            Array.isArray(accessData) ? accessData : accessData ? [accessData] : [],
+          );
+        }
+        await Promise.all([loadWithdrawals(), loadReferrals()]);
+      } catch {
+        // falha de rede ao carregar dados extras
       }
-      if (goalsRes.ok) {
-        setGoals((await goalsRes.json()) as GoalsResponse);
-      }
-      const accessRes = await fetch("/api/hots-access");
-      if (accessRes.ok) {
-        const accessData = (await accessRes.json()) as UserHotsAccessItem[] | UserHotsAccessItem | null;
-        setHotsAccess(
-          Array.isArray(accessData) ? accessData : accessData ? [accessData] : [],
-        );
-      }
-      await Promise.all([loadWithdrawals(), loadReferrals()]);
     }
-    loadExtraData();
+    void loadExtraData();
   }, []);
 
   useEffect(() => {
@@ -488,10 +519,14 @@ export default function MembrosPainelClient({
   }, [activeSection]);
 
   async function loadMyProofs() {
-    const response = await fetch("/api/proofs");
-    if (!response.ok) return;
-    const data = await response.json();
-    setProofs(data);
+    const response = await safeFetch("/api/proofs");
+    if (!response?.ok) return;
+    try {
+      const data = await response.json();
+      setProofs(data);
+    } catch {
+      // ignora
+    }
   }
 
   function handleDashboardModeChange(mode: "real" | "total") {
