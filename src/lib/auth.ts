@@ -2,7 +2,8 @@ import "server-only";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const AUTH_COOKIE = "hots_auth";
+export const AUTH_COOKIE_NAME = "hots_auth";
+export const SESSION_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 
 export type UserRole = "admin" | "member";
 
@@ -27,26 +28,38 @@ function getJwtSecret() {
   return secret;
 }
 
-export async function createSessionCookie(payload: SessionPayload) {
-  const token = jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
-  const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE, token, {
+export function getSessionCookieOptions() {
+  return {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+    maxAge: SESSION_MAX_AGE_SEC,
+  };
+}
+
+export function signSessionToken(payload: SessionPayload) {
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "30d" });
+}
+
+export async function createSessionCookie(payload: SessionPayload) {
+  const token = signSessionToken(payload);
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions());
+  return token;
 }
 
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
-  cookieStore.delete(AUTH_COOKIE);
+  cookieStore.set(AUTH_COOKIE_NAME, "", {
+    ...getSessionCookieOptions(),
+    maxAge: 0,
+  });
 }
 
 export async function getSessionFromCookie() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_COOKIE)?.value;
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {

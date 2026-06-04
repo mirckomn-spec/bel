@@ -1208,20 +1208,35 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
       access?: HotsAccessItem[];
       profilesByKey?: Partial<Record<"loira" | "morena", HotsProfileCredentials>>;
     };
+    const profiles = data.profilesByKey ?? {};
     setHotsAccessList(data.access ?? []);
-    setHotsCredentialsByProfile(data.profilesByKey ?? {});
+    setHotsCredentialsByProfile(profiles);
+    if (hotsModificarStep === "edit") {
+      syncHotsCredentialFields(hotsConfigProfile, hotsConfigSocial, profiles);
+    }
   }
 
-  useEffect(() => {
-    const current = hotsCredentialsByProfile[hotsConfigProfile];
+  function syncHotsCredentialFields(
+    profile: "loira" | "morena",
+    social: "twitter" | "facebook" | "tiktok" | "instagram" | "discord",
+    profiles: Partial<Record<"loira" | "morena", HotsProfileCredentials>> = hotsCredentialsByProfile,
+  ) {
+    const current = profiles[profile];
     setHotsLoginInput(current?.login ?? "");
     setHotsPasswordInput(current?.password ?? "");
     setHotsImageUrlInput(current?.imageUrl ?? "");
-    const socialCurrent = current?.socialCredentialsByKey?.[hotsConfigSocial];
+    const socialCurrent = current?.socialCredentialsByKey?.[social];
     setHotsSocialLoginInput(socialCurrent?.login ?? "");
     setHotsSocialPasswordInput(socialCurrent?.password ?? "");
     setHotsSocialUrlInput(socialCurrent?.url ?? "");
-  }, [hotsConfigProfile, hotsConfigSocial, hotsCredentialsByProfile]);
+  }
+
+  useEffect(() => {
+    if (hotsModificarStep === "edit") {
+      syncHotsCredentialFields(hotsConfigProfile, hotsConfigSocial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotsConfigProfile, hotsConfigSocial, hotsCredentialsByProfile, hotsModificarStep]);
 
   async function loadWithdrawals() {
     const response = await fetch("/api/withdrawals");
@@ -2610,6 +2625,30 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                   {passwordRevealError}
                 </div>
               ) : null}
+              {Object.keys(revealedPasswordByUser).length > 0 ? (
+                <div className="mt-4 rounded-2xl border-2 border-[#F48FB1] bg-gradient-to-br from-[#FFF8FA] to-[#FCE4EC] p-4">
+                  <p className="text-sm font-semibold text-[#A64D79]">
+                    Senhas visiveis no painel
+                  </p>
+                  <p className="mt-1 text-xs text-[#B885A3]">
+                    As senhas aparecem aqui no site. Clique em &quot;Ocultar Senha&quot; na tabela
+                    para esconder.
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {Object.entries(revealedPasswordByUser).map(([uname, pwd]) => (
+                      <div
+                        key={uname}
+                        className="rounded-xl border border-[#F8BBD0] bg-white px-3 py-2"
+                      >
+                        <p className="text-xs font-medium text-[#B885A3]">@{uname}</p>
+                        <p className="mt-1 break-all font-mono text-sm font-semibold text-[#A64D79]">
+                          {pwd}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-6 overflow-hidden rounded-2xl border border-[#F8BBD0]">
                 <div className="admin-kawaii-table-scroll">
                 <table className="w-full border-collapse bg-white text-left text-sm">
@@ -3461,6 +3500,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                           setHotsModificarStep("social");
                           setHotsConfigSocial("instagram");
                           setHotsMessage("");
+                          syncHotsCredentialFields("loira", "instagram");
                         }}
                         className={`rounded-2xl px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
                           hotsConfigProfile === "loira" && hotsModificarStep
@@ -3477,6 +3517,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                           setHotsModificarStep("social");
                           setHotsConfigSocial("instagram");
                           setHotsMessage("");
+                          syncHotsCredentialFields("morena", "instagram");
                         }}
                         className={`rounded-2xl px-4 py-6 text-center text-sm font-medium transition hover:brightness-[0.98] ${
                           hotsConfigProfile === "morena" && hotsModificarStep
@@ -3550,6 +3591,7 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                               onClick={() => {
                                 setHotsConfigSocial(key);
                                 setHotsModificarStep("edit");
+                                syncHotsCredentialFields(hotsConfigProfile, key);
                               }}
                               className={`rounded-xl border px-3 py-3 text-sm font-medium transition hover:brightness-[0.98] ${
                                 hotsConfigSocial === key
@@ -3578,24 +3620,92 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                             Rede:{" "}
                             <span className="font-semibold">{HOTS_SOCIAL_LABELS[hotsConfigSocial]}</span>
                           </div>
-                          <label className="grid gap-1.5 text-sm text-[#A64D79]">
-                            Login
-                            <input
-                              value={hotsSocialLoginInput}
-                              onChange={(event) => setHotsSocialLoginInput(event.target.value)}
-                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                              placeholder="Login atual ou novo login"
-                            />
-                          </label>
-                          <label className="grid gap-1.5 text-sm text-[#A64D79]">
-                            Senha
-                            <input
-                              value={hotsSocialPasswordInput}
-                              onChange={(event) => setHotsSocialPasswordInput(event.target.value)}
-                              className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 text-sm text-[#A64D79]"
-                              placeholder="Senha atual ou nova senha"
-                            />
-                          </label>
+
+                          <div className="rounded-xl border border-[#F8BBD0] bg-[#FFF8FA] px-4 py-3 text-sm text-[#A64D79]">
+                            <p className="font-semibold text-[#A64D79]">
+                              Credenciais atuais (edite nos campos abaixo)
+                            </p>
+                            <p className="mt-2 text-xs text-[#B885A3]">
+                              Conta do perfil — login:{" "}
+                              <span className="font-mono font-semibold text-[#A64D79]">
+                                {hotsLoginInput || "—"}
+                              </span>
+                              {" · "}
+                              senha:{" "}
+                              <span className="font-mono font-semibold text-[#A64D79]">
+                                {hotsPasswordInput || "—"}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-xs text-[#B885A3]">
+                              {HOTS_SOCIAL_LABELS[hotsConfigSocial]} — login:{" "}
+                              <span className="font-mono font-semibold text-[#A64D79]">
+                                {hotsSocialLoginInput || "—"}
+                              </span>
+                              {" · "}
+                              senha:{" "}
+                              <span className="font-mono font-semibold text-[#A64D79]">
+                                {hotsSocialPasswordInput || "—"}
+                              </span>
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-[#F8BBD0] bg-white p-4">
+                            <p className="mb-3 text-sm font-semibold text-[#A64D79]">
+                              Conta do perfil ({hotsConfigProfile})
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                                Login atual do hot
+                                <input
+                                  value={hotsLoginInput}
+                                  onChange={(event) => setHotsLoginInput(event.target.value)}
+                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                  placeholder="Login do perfil"
+                                  autoComplete="off"
+                                />
+                              </label>
+                              <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                                Senha atual do hot
+                                <input
+                                  value={hotsPasswordInput}
+                                  onChange={(event) => setHotsPasswordInput(event.target.value)}
+                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                  placeholder="Senha do perfil"
+                                  autoComplete="off"
+                                />
+                              </label>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-[#F8BBD0] bg-white p-4">
+                            <p className="mb-3 text-sm font-semibold text-[#A64D79]">
+                              {HOTS_SOCIAL_LABELS[hotsConfigSocial]}
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                                Login atual da rede
+                                <input
+                                  value={hotsSocialLoginInput}
+                                  onChange={(event) => setHotsSocialLoginInput(event.target.value)}
+                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                  placeholder="Login da rede social"
+                                  autoComplete="off"
+                                />
+                              </label>
+                              <label className="grid gap-1.5 text-sm text-[#A64D79]">
+                                Senha atual da rede
+                                <input
+                                  value={hotsSocialPasswordInput}
+                                  onChange={(event) =>
+                                    setHotsSocialPasswordInput(event.target.value)
+                                  }
+                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                  placeholder="Senha da rede social"
+                                  autoComplete="off"
+                                />
+                              </label>
+                            </div>
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"

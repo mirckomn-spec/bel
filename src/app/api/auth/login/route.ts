@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { createSessionCookie } from "@/lib/auth";
+import {
+  AUTH_COOKIE_NAME,
+  createSessionCookie,
+  getSessionCookieOptions,
+} from "@/lib/auth";
 import { ALLOWED_USERS, getUserRole } from "@/lib/users";
 import { findSiteUser, isPermanentlyRemoved, verifyPassword } from "@/lib/site-users";
 import { getClientIp, takeRateLimitSlot } from "@/lib/rate-limit";
@@ -56,16 +60,18 @@ export async function POST(request: Request) {
     if (!expectedPassword || passwordRaw !== expectedPassword) {
       return jsonNoStore({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
     }
-    await createSessionCookie({
+    const token = await createSessionCookie({
       userId: normalizedUsername,
       username: normalizedUsername,
       role: "admin",
     });
-    return jsonNoStore({
+    const response = jsonNoStore({
       ok: true,
       role: "admin",
       redirect: "/dashboard",
     });
+    response.cookies.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions());
+    return response;
   }
 
   if (await isPermanentlyRemoved(normalizedUsername)) {
@@ -100,16 +106,18 @@ export async function POST(request: Request) {
       );
     }
     const role = getUserRole(normalizedUsername);
-    await createSessionCookie({
+    const token = await createSessionCookie({
       userId: normalizedUsername,
       username: normalizedUsername,
       role,
     });
-    return jsonNoStore({
+    const response = jsonNoStore({
       ok: true,
       role,
       redirect: role === "admin" ? "/dashboard" : "/painel",
     });
+    response.cookies.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions());
+    return response;
   }
 
   const expectedPassword = ALLOWED_USERS[normalizedUsername];
@@ -118,15 +126,16 @@ export async function POST(request: Request) {
   }
 
   const role = getUserRole(normalizedUsername);
-  await createSessionCookie({
+  const token = await createSessionCookie({
     userId: normalizedUsername,
     username: normalizedUsername,
     role,
   });
-
-  return jsonNoStore({
+  const response = jsonNoStore({
     ok: true,
     role,
     redirect: role === "admin" ? "/dashboard" : "/painel",
   });
+  response.cookies.set(AUTH_COOKIE_NAME, token, getSessionCookieOptions());
+  return response;
 }

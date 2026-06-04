@@ -20,6 +20,26 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function restoreSession() {
+      try {
+        const response = await fetch("/api/auth/session", { credentials: "same-origin" });
+        if (!response.ok || cancelled) return;
+        const data = (await response.json()) as { redirect?: string };
+        if (typeof data.redirect === "string" && !cancelled) {
+          router.replace(data.redirect);
+        }
+      } catch {
+        // Sem sessao salva — permanece na tela de login.
+      }
+    }
+    void restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   function startCooldown(durationMs: number) {
     if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     const endsAt = Date.now() + durationMs;
@@ -117,20 +137,21 @@ export default function Home() {
         className="pointer-events-none absolute bottom-[27%] right-[22%] z-10 hidden w-[170px] select-none scale-[1.06] translate-x-[4.124cm] md:block md:bottom-[30%] md:right-[25%] md:w-[215px] md:scale-[1.06] md:translate-x-[4.124cm] lg:bottom-[32%] lg:right-[27%] lg:w-[250px] lg:scale-[1.06] lg:translate-x-[4.124cm]"
         draggable={false}
       />
-      <section className="relative z-10 mx-auto w-full max-w-3xl overflow-hidden rounded-[2rem] border border-[#f3c7d9] bg-[#fff9fc]/95 p-3 shadow-[0_20px_55px_rgba(232,141,177,0.38)] sm:rounded-[2.4rem] sm:p-4 md:p-6">
+      <div className="relative z-10 mx-auto w-full max-w-3xl px-1 pt-20 sm:pt-28 md:pt-32">
         <img
           src="https://i.imgur.com/v0POVO6.png"
           alt="Hello Kitty branca decorativa"
-          className="pointer-events-none absolute -left-2 -top-16 z-30 hidden w-[120px] rotate-[8deg] select-none sm:block sm:-left-[34px] sm:-top-[96px] sm:w-[165px] md:-left-[46px] md:-top-[118px] md:w-[209px] lg:-left-[54px] lg:-top-[132px] lg:w-[243px]"
+          className="pointer-events-none absolute left-0 top-[calc(0.5rem+1.8cm)] z-40 w-[108px] -translate-x-[6%] -translate-y-[42%] rotate-[8deg] select-none sm:left-1 sm:top-[1.8cm] sm:w-[150px] sm:-translate-x-[12%] sm:-translate-y-[48%] md:-left-3 md:w-[190px] lg:-left-5 lg:w-[220px] xl:w-[243px]"
           draggable={false}
         />
         <img
           src="https://i.imgur.com/K9ZmvDc.png"
           alt="Hello Kitty preta decorativa"
-          className="pointer-events-none absolute -right-2 -top-14 z-30 hidden w-[115px] select-none sm:block sm:-right-[30px] sm:-top-[calc(90px-0.2cm)] sm:w-[158px] md:-right-[44px] md:-top-[calc(112px-0.2cm)] md:w-[200px] lg:-right-[52px] lg:-top-[calc(126px-0.2cm)] lg:w-[235px]"
+          className="pointer-events-none absolute right-0 top-[calc(0.75rem+1.8cm)] z-40 w-[102px] translate-x-[6%] -translate-y-[38%] select-none sm:right-1 sm:top-[calc(0.25rem+1.8cm)] sm:w-[142px] sm:translate-x-[10%] sm:-translate-y-[44%] md:-right-3 md:w-[185px] lg:-right-5 lg:w-[215px] xl:w-[235px]"
           draggable={false}
         />
-        <div className="rounded-[1.5rem] border border-[#f4cfde] bg-[#fffdfd] px-4 py-5 sm:rounded-[1.8rem] sm:px-5 sm:py-6 md:px-8 md:py-8">
+        <section className="relative rounded-[2rem] border border-[#f3c7d9] bg-[#fff9fc]/95 p-3 shadow-[0_20px_55px_rgba(232,141,177,0.38)] sm:rounded-[2.4rem] sm:p-4 md:p-6">
+          <div className="relative rounded-[1.5rem] border border-[#f4cfde] bg-[#fffdfd] px-4 py-5 sm:rounded-[1.8rem] sm:px-5 sm:py-6 md:px-8 md:py-8">
           <span className="inline-flex items-center rounded-full border border-[#f2b8cf] bg-[#ffe8f2] px-3 py-1 text-xs text-[#d56a97]">
             area privada
           </span>
@@ -190,8 +211,9 @@ export default function Home() {
               Por seguranca, ha um intervalo minimo entre tentativas de login.
             </p>
           </form>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

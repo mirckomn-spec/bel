@@ -61,6 +61,23 @@ function applySecurityHeaders(response: NextResponse, isApi: boolean) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith("/api/");
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  const secret = process.env.JWT_SECRET;
+
+  if (pathname === "/" && token && secret) {
+    try {
+      const key = new TextEncoder().encode(secret);
+      const { payload } = await jwtVerify(token, key);
+      const role = resolveRole(payload as DecodedPayload);
+      const destination = role === "admin" ? "/dashboard" : "/painel";
+      return applySecurityHeaders(
+        NextResponse.redirect(new URL(destination, request.url)),
+        false,
+      );
+    } catch {
+      // Cookie invalido: deixa abrir a tela de login.
+    }
+  }
 
   const needsAuth =
     pathname.startsWith("/dashboard") ||
@@ -79,9 +96,6 @@ export async function middleware(request: NextRequest) {
   if (!needsAuth) {
     return applySecurityHeaders(NextResponse.next(), isApi);
   }
-
-  const token = request.cookies.get(AUTH_COOKIE)?.value;
-  const secret = process.env.JWT_SECRET;
 
   if (!token || !secret) {
     if (isApi) {
