@@ -96,6 +96,65 @@ function mongo503(e: unknown) {
   return null;
 }
 
+function buildMemberHotsPayload(
+  myAccessList: AccessItem[],
+  credentialsByProfile: Partial<Record<ProfileKey, ProfileCredentials>>,
+) {
+  const profileKeys: ProfileKey[] = ["loira", "morena"];
+  const results: Array<
+    AccessItem & {
+      credentials: { login: string; password: string } | null;
+      profileImageUrl: string | null;
+      grantedSocials: SocialKey[];
+      socialCredentialsByKey: Partial<Record<SocialKey, SocialCredential>>;
+    }
+  > = [];
+
+  for (const profileKey of profileKeys) {
+    const profileScope = myAccessList.find(
+      (item) => item.profileKey === profileKey && item.scope === "profile",
+    );
+    const socialItems = myAccessList.filter(
+      (item) => item.profileKey === profileKey && item.scope === "social",
+    );
+    if (!profileScope && socialItems.length === 0) continue;
+
+    const grantedSocials = socialItems
+      .map((item) => item.socialKey)
+      .filter((key): key is SocialKey => Boolean(key));
+    const profileData = credentialsByProfile[profileKey] ?? null;
+    const grantedSet = new Set(grantedSocials);
+    const filteredSocialCredentials: Partial<Record<SocialKey, SocialCredential>> = {};
+    for (const [key, value] of Object.entries(profileData?.socialCredentialsByKey ?? {})) {
+      if (value && grantedSet.has(key as SocialKey)) {
+        filteredSocialCredentials[key as SocialKey] = value;
+      }
+    }
+
+    const latestItem = [...(profileScope ? [profileScope] : []), ...socialItems].sort((a, b) =>
+      b.updatedAt.localeCompare(a.updatedAt),
+    )[0];
+
+    results.push({
+      username: latestItem?.username ?? socialItems[0]?.username ?? profileScope?.username ?? "",
+      profileKey,
+      scope: profileScope ? "profile" : "social",
+      socialKey: profileScope ? undefined : socialItems[0]?.socialKey,
+      updatedAt: latestItem?.updatedAt ?? new Date().toISOString(),
+      updatedBy: latestItem?.updatedBy ?? "bel",
+      credentials:
+        profileScope && profileData
+          ? { login: profileData.login, password: profileData.password }
+          : null,
+      profileImageUrl: profileData?.imageUrl ?? null,
+      grantedSocials,
+      socialCredentialsByKey: filteredSocialCredentials,
+    });
+  }
+
+  return results;
+}
+
 export async function GET(request: Request) {
   const session = await getSessionFromCookie();
   if (!session) {
@@ -134,38 +193,7 @@ export async function GET(request: Request) {
     }
 
     const myAccessList = merged.filter((item) => item.username === session.username.toLowerCase());
-    const profileAccessList = myAccessList.filter((item) => item.scope === "profile");
-    const socialAccessList = myAccessList.filter((item) => item.scope === "social");
-    return jsonNoStore(
-      profileAccessList.map((item) => {
-        const profileData = credentialsByProfile[item.profileKey] ?? null;
-        const grantedSocials = socialAccessList
-          .filter((socialItem) => socialItem.profileKey === item.profileKey)
-          .map((socialItem) => socialItem.socialKey)
-          .filter((social): social is SocialKey => Boolean(social));
-        // CRITICO: so devolvemos credenciais das redes que esse usuario
-        // tem liberado. Antes vazavamos todas as redes do perfil mesmo
-        // sem o usuario ter acesso a elas.
-        const grantedSet = new Set(grantedSocials);
-        const filteredSocialCredentials: Partial<Record<SocialKey, SocialCredential>> = {};
-        for (const [key, value] of Object.entries(
-          profileData?.socialCredentialsByKey ?? {},
-        )) {
-          if (value && grantedSet.has(key as SocialKey)) {
-            filteredSocialCredentials[key as SocialKey] = value;
-          }
-        }
-        return {
-          ...item,
-          credentials: profileData
-            ? { login: profileData.login, password: profileData.password }
-            : null,
-          profileImageUrl: profileData?.imageUrl ?? null,
-          grantedSocials,
-          socialCredentialsByKey: filteredSocialCredentials,
-        };
-      }),
-    );
+    return jsonNoStore(buildMemberHotsPayload(myAccessList, credentialsByProfile));
   } catch (e) {
     const r = mongo503(e);
     if (r) return r;

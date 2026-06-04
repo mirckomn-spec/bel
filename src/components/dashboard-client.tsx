@@ -312,6 +312,18 @@ const HOTS_SOCIAL_LABELS: Record<
   discord: "Discord",
 };
 
+const HOTS_SOCIAL_ORDER = [
+  "instagram",
+  "facebook",
+  "twitter",
+  "tiktok",
+  "discord",
+] as const;
+
+function hotsProfileDisplayName(profileKey: "loira" | "morena") {
+  return profileKey === "loira" ? "Loira" : "Morena";
+}
+
 function hotsAccessItemKey(
   item: Pick<HotsAccessItem, "username" | "profileKey" | "scope" | "socialKey">,
 ) {
@@ -322,9 +334,82 @@ function hotsRemoveConfirmMessage(
   item: Pick<HotsAccessItem, "username" | "profileKey" | "scope" | "socialKey">,
 ) {
   if (item.scope === "profile") {
-    return `Remover o acesso de @${item.username} ao perfil ${item.profileKey}?`;
+    return `Remover o acesso de @${item.username} ao perfil ${hotsProfileDisplayName(item.profileKey)}?`;
   }
-  return `Remover o acesso de @${item.username} à rede ${HOTS_SOCIAL_LABELS[item.socialKey ?? "instagram"]} (${item.profileKey})?`;
+  return `Remover o acesso de @${item.username} ao ${HOTS_SOCIAL_LABELS[item.socialKey ?? "instagram"]} (perfil ${hotsProfileDisplayName(item.profileKey)})?`;
+}
+
+type HotsAccessRowProps = {
+  item: HotsAccessItem;
+  hotsRemoveConfirmKey: string | null;
+  hotsRemoveBusyKey: string | null;
+  onConfirmRemove: (item: HotsAccessItem) => void;
+  onRequestRemove: (key: string) => void;
+  onCancelRemove: () => void;
+};
+
+function HotsAccessGrantRow({
+  item,
+  hotsRemoveConfirmKey,
+  hotsRemoveBusyKey,
+  onConfirmRemove,
+  onRequestRemove,
+  onCancelRemove,
+}: HotsAccessRowProps) {
+  const itemKey = hotsAccessItemKey(item);
+  const isConfirmingRemove = hotsRemoveConfirmKey === itemKey;
+  const isRemoving = hotsRemoveBusyKey === itemKey;
+
+  return (
+    <li className="rounded-xl border border-[#F8BBD0]/80 bg-[#FDF2F5] p-2.5">
+      <div className="flex items-start gap-2">
+        <UserAvatar username={item.username} className="h-8 w-8 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-[#A64D79]">@{item.username}</p>
+          <span
+            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              item.profileKey === "loira"
+                ? "bg-[#FCE4EC] text-[#A64D79] ring-1 ring-[#F8BBD0]"
+                : "bg-[#EDE0D4] text-[#6B4E3D] ring-1 ring-[#D4C4B0]"
+            }`}
+          >
+            Perfil {hotsProfileDisplayName(item.profileKey)}
+          </span>
+        </div>
+      </div>
+      {isConfirmingRemove ? (
+        <div className="mt-2 rounded-lg border border-[#F8BBD0] bg-white p-2">
+          <p className="text-xs text-[#A64D79]">{hotsRemoveConfirmMessage(item)}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              disabled={isRemoving}
+              onClick={() => onConfirmRemove(item)}
+              className="rounded-lg bg-[#F48FB1] px-2.5 py-1 text-[11px] font-medium text-white hover:brightness-95 disabled:opacity-60"
+            >
+              {isRemoving ? "Removendo..." : "Sim, remover"}
+            </button>
+            <button
+              type="button"
+              disabled={isRemoving}
+              onClick={onCancelRemove}
+              className="rounded-lg border border-[#F8BBD0] bg-white px-2.5 py-1 text-[11px] text-[#A64D79] hover:brightness-[0.98] disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onRequestRemove(itemKey)}
+          className="mt-2 w-full rounded-lg border border-[#F8BBD0] bg-white px-2 py-1 text-[11px] text-[#A64D79] hover:bg-[#FCE4EC]"
+        >
+          Remover
+        </button>
+      )}
+    </li>
+  );
 }
 
 function isAdminFineActive(fine: AdminFine): boolean {
@@ -528,6 +613,47 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
   const [rankingMessage, setRankingMessage] = useState("");
 
   const rosterForSelects = memberRoster ?? FIXED_MEMBER_USERS;
+
+  const hotsSocialAccessByNetwork = useMemo(() => {
+    const map: Record<
+      (typeof HOTS_SOCIAL_ORDER)[number],
+      HotsAccessItem[]
+    > = {
+      instagram: [],
+      facebook: [],
+      twitter: [],
+      tiktok: [],
+      discord: [],
+    };
+    for (const item of hotsAccessList) {
+      if (item.scope === "social" && item.socialKey) {
+        map[item.socialKey].push(item);
+      }
+    }
+    for (const key of HOTS_SOCIAL_ORDER) {
+      map[key].sort((a, b) => {
+        const byProfile = a.profileKey.localeCompare(b.profileKey);
+        if (byProfile !== 0) return byProfile;
+        return a.username.localeCompare(b.username);
+      });
+    }
+    return map;
+  }, [hotsAccessList]);
+
+  const hotsProfileWideAccess = useMemo(
+    () =>
+      [...hotsAccessList.filter((item) => item.scope === "profile")].sort((a, b) => {
+        const byProfile = a.profileKey.localeCompare(b.profileKey);
+        if (byProfile !== 0) return byProfile;
+        return a.username.localeCompare(b.username);
+      }),
+    [hotsAccessList],
+  );
+
+  const hotsSocialAccessCount = useMemo(
+    () => hotsAccessList.filter((item) => item.scope === "social").length,
+    [hotsAccessList],
+  );
 
   const membrosCards = useMemo(() => {
     const proofMap = new Map<string, number>();
@@ -3485,6 +3611,112 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                   ) : null}
 
                   {hotsMessage ? <p className="text-sm text-[#A64D79]">{hotsMessage}</p> : null}
+
+                  <div className="mt-8 rounded-2xl border border-[#F8BBD0] bg-gradient-to-b from-[#FFF8FA] to-[#FFFFFF] p-4 sm:p-5">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                      <div>
+                        <h4 className="text-lg font-semibold text-[#A64D79]">
+                          Quem tem acesso liberado
+                        </h4>
+                        <p className="mt-1 text-sm text-[#B885A3]">
+                          Visao por rede social e perfil (Loira ou Morena). Total:{" "}
+                          <strong className="text-[#A64D79]">{hotsSocialAccessCount}</strong>{" "}
+                          liberacao(oes) de rede
+                          {hotsProfileWideAccess.length > 0
+                            ? ` · ${hotsProfileWideAccess.length} acesso(s) geral(is) ao perfil`
+                            : ""}
+                          .
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                      {HOTS_SOCIAL_ORDER.map((socialKey) => {
+                        const grants = hotsSocialAccessByNetwork[socialKey];
+                        return (
+                          <article
+                            key={socialKey}
+                            className="flex flex-col rounded-2xl border border-[#F8BBD0] bg-white p-3 shadow-sm"
+                          >
+                            <div className="border-b border-[#F48FB122] pb-2">
+                              <p className="text-sm font-semibold text-[#A64D79]">
+                                {HOTS_SOCIAL_LABELS[socialKey]}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-[#B885A3]">
+                                {grants.length === 0
+                                  ? "Ninguem com acesso"
+                                  : `${grants.length} membro(s)`}
+                              </p>
+                            </div>
+                            {grants.length === 0 ? (
+                              <p className="mt-3 flex-1 text-xs leading-relaxed text-[#B885A3]">
+                                Libere esta rede no fluxo acima para aparecer aqui.
+                              </p>
+                            ) : (
+                              <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-0.5">
+                                {grants.map((item) => (
+                                  <HotsAccessGrantRow
+                                    key={hotsAccessItemKey(item)}
+                                    item={item}
+                                    hotsRemoveConfirmKey={hotsRemoveConfirmKey}
+                                    hotsRemoveBusyKey={hotsRemoveBusyKey}
+                                    onConfirmRemove={(row) =>
+                                      void handleRemoveHotsAccess(
+                                        row.username,
+                                        row.profileKey,
+                                        row.scope,
+                                        row.socialKey,
+                                      )
+                                    }
+                                    onRequestRemove={setHotsRemoveConfirmKey}
+                                    onCancelRemove={() => setHotsRemoveConfirmKey(null)}
+                                  />
+                                ))}
+                              </ul>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    {hotsProfileWideAccess.length > 0 ? (
+                      <div className="mt-5 rounded-2xl border border-[#F8BBD0] bg-white p-4">
+                        <p className="text-sm font-semibold text-[#A64D79]">
+                          Acesso geral ao perfil (legado)
+                        </p>
+                        <p className="mt-1 text-xs text-[#B885A3]">
+                          Membros com liberacao antiga do perfil inteiro — sem rede especifica.
+                        </p>
+                        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {hotsProfileWideAccess.map((item) => (
+                            <HotsAccessGrantRow
+                              key={hotsAccessItemKey(item)}
+                              item={item}
+                              hotsRemoveConfirmKey={hotsRemoveConfirmKey}
+                              hotsRemoveBusyKey={hotsRemoveBusyKey}
+                              onConfirmRemove={(row) =>
+                                void handleRemoveHotsAccess(
+                                  row.username,
+                                  row.profileKey,
+                                  row.scope,
+                                  row.socialKey,
+                                )
+                              }
+                              onRequestRemove={setHotsRemoveConfirmKey}
+                              onCancelRemove={() => setHotsRemoveConfirmKey(null)}
+                            />
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {hotsSocialAccessCount === 0 && hotsProfileWideAccess.length === 0 ? (
+                      <p className="mt-4 rounded-xl border border-dashed border-[#F8BBD0] bg-white/80 px-4 py-6 text-center text-sm text-[#B885A3]">
+                        Nenhum acesso liberado ainda. Escolha um membro acima e libere Instagram,
+                        Facebook ou outra rede no perfil Loira ou Morena.
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
 
@@ -3656,23 +3888,41 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                             <div className="grid gap-3 sm:grid-cols-2">
                               <label className="grid gap-1.5 text-sm text-[#A64D79]">
                                 Login atual do hot
-                                <input
-                                  value={hotsLoginInput}
-                                  onChange={(event) => setHotsLoginInput(event.target.value)}
-                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
-                                  placeholder="Login do perfil"
-                                  autoComplete="off"
-                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    value={hotsLoginInput}
+                                    onChange={(event) => setHotsLoginInput(event.target.value)}
+                                    className="min-w-0 flex-1 rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                    placeholder="Login do perfil"
+                                    autoComplete="off"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setHotsLoginInput("")}
+                                    className="shrink-0 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-2 text-xs font-medium text-[#A64D79] hover:brightness-[0.98]"
+                                  >
+                                    Limpar login
+                                  </button>
+                                </div>
                               </label>
                               <label className="grid gap-1.5 text-sm text-[#A64D79]">
                                 Senha atual do hot
-                                <input
-                                  value={hotsPasswordInput}
-                                  onChange={(event) => setHotsPasswordInput(event.target.value)}
-                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
-                                  placeholder="Senha do perfil"
-                                  autoComplete="off"
-                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    value={hotsPasswordInput}
+                                    onChange={(event) => setHotsPasswordInput(event.target.value)}
+                                    className="min-w-0 flex-1 rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                    placeholder="Senha do perfil"
+                                    autoComplete="off"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setHotsPasswordInput("")}
+                                    className="shrink-0 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-2 text-xs font-medium text-[#A64D79] hover:brightness-[0.98]"
+                                  >
+                                    Limpar senha
+                                  </button>
+                                </div>
                               </label>
                             </div>
                           </div>
@@ -3684,25 +3934,43 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                             <div className="grid gap-3 sm:grid-cols-2">
                               <label className="grid gap-1.5 text-sm text-[#A64D79]">
                                 Login atual da rede
-                                <input
-                                  value={hotsSocialLoginInput}
-                                  onChange={(event) => setHotsSocialLoginInput(event.target.value)}
-                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
-                                  placeholder="Login da rede social"
-                                  autoComplete="off"
-                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    value={hotsSocialLoginInput}
+                                    onChange={(event) => setHotsSocialLoginInput(event.target.value)}
+                                    className="min-w-0 flex-1 rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                    placeholder="Login da rede social"
+                                    autoComplete="off"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setHotsSocialLoginInput("")}
+                                    className="shrink-0 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-2 text-xs font-medium text-[#A64D79] hover:brightness-[0.98]"
+                                  >
+                                    Limpar login
+                                  </button>
+                                </div>
                               </label>
                               <label className="grid gap-1.5 text-sm text-[#A64D79]">
                                 Senha atual da rede
-                                <input
-                                  value={hotsSocialPasswordInput}
-                                  onChange={(event) =>
-                                    setHotsSocialPasswordInput(event.target.value)
-                                  }
-                                  className="rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
-                                  placeholder="Senha da rede social"
-                                  autoComplete="off"
-                                />
+                                <div className="flex gap-2">
+                                  <input
+                                    value={hotsSocialPasswordInput}
+                                    onChange={(event) =>
+                                      setHotsSocialPasswordInput(event.target.value)
+                                    }
+                                    className="min-w-0 flex-1 rounded-xl border border-[#F8BBD0] bg-white px-4 py-2 font-mono text-sm text-[#A64D79]"
+                                    placeholder="Senha da rede social"
+                                    autoComplete="off"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setHotsSocialPasswordInput("")}
+                                    className="shrink-0 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-2 text-xs font-medium text-[#A64D79] hover:brightness-[0.98]"
+                                  >
+                                    Limpar senha
+                                  </button>
+                                </div>
                               </label>
                             </div>
                           </div>
@@ -3729,71 +3997,6 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
                   {hotsMessage ? <p className="text-sm text-[#A64D79]">{hotsMessage}</p> : null}
                 </div>
               ) : null}
-
-              <div className="mt-5 grid gap-3">
-                {hotsAccessList.map((item) => {
-                  const itemKey = hotsAccessItemKey(item);
-                  const isConfirmingRemove = hotsRemoveConfirmKey === itemKey;
-                  const isRemoving = hotsRemoveBusyKey === itemKey;
-
-                  return (
-                  <article
-                    key={itemKey}
-                    className="flex items-start gap-3 rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4"
-                  >
-                    <UserAvatar username={item.username} className="h-10 w-10 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#A64D79]">
-                        @{item.username} — perfil {item.profileKey}
-                        {item.scope === "social" && item.socialKey ? ` (${HOTS_SOCIAL_LABELS[item.socialKey]})` : ""}
-                      </p>
-                      <p className="text-xs text-[#B885A3]">
-                        Atualizado em {new Date(item.updatedAt).toLocaleString("pt-BR")} por{" "}
-                        {item.updatedBy}
-                      </p>
-                      {isConfirmingRemove ? (
-                        <div className="mt-3 rounded-xl border border-[#F8BBD0] bg-[#FDF2F5] p-3">
-                          <p className="text-sm text-[#A64D79]">{hotsRemoveConfirmMessage(item)}</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              disabled={isRemoving}
-                              onClick={() =>
-                                void handleRemoveHotsAccess(
-                                  item.username,
-                                  item.profileKey,
-                                  item.scope,
-                                  item.socialKey,
-                                )
-                              }
-                              className="rounded-lg bg-[#F48FB1] px-3 py-1.5 text-xs font-medium text-white hover:brightness-95 disabled:opacity-60"
-                            >
-                              {isRemoving ? "Removendo..." : "Sim, remover"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isRemoving}
-                              onClick={() => setHotsRemoveConfirmKey(null)}
-                              className="rounded-lg border border-[#F8BBD0] bg-white px-3 py-1.5 text-xs text-[#A64D79] hover:brightness-[0.98] disabled:opacity-60"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setHotsRemoveConfirmKey(itemKey)}
-                          className="mt-2 rounded-lg border border-[#F8BBD0] bg-[#FCE4EC] px-3 py-1 text-xs text-[#A64D79] hover:bg-[#FADCE8]"
-                        >
-                          Remover acesso
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                  );
-                })}
-              </div>
             </>
           ) : null}
         </section>
