@@ -48,6 +48,7 @@ export async function GET() {
           productName: proof.productName,
           uploader: proof.uploader,
           saleValue: proof.saleValue ?? 0,
+          grossSaleValue: proof.grossSaleValue ?? proof.saleValue ?? 0,
           originalName: proof.originalName,
           mimeType: proof.mimeType,
           createdAt: proof.createdAt,
@@ -55,7 +56,6 @@ export async function GET() {
         if (session.role === "admin") {
           return {
             ...base,
-            grossSaleValue: proof.grossSaleValue ?? proof.saleValue ?? 0,
             penaltyPercentApplied: proof.penaltyPercentApplied ?? null,
           };
         }

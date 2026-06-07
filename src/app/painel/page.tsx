@@ -16,6 +16,7 @@ export default async function PainelPage() {
     productName?: string;
     uploader?: string;
     saleValue?: number;
+    grossSaleValue?: number;
     originalName?: string;
     mimeType?: string;
     createdAt: Date;
@@ -34,6 +35,7 @@ export default async function PainelPage() {
     productName: String(proof.productName ?? ""),
     uploader: String(proof.uploader ?? ""),
     saleValue: Number(proof.saleValue ?? 0),
+    grossSaleValue: Number(proof.grossSaleValue ?? proof.saleValue ?? 0),
     originalName: String(proof.originalName ?? ""),
     mimeType: String(proof.mimeType ?? ""),
     createdAt: new Date(proof.createdAt).toISOString(),

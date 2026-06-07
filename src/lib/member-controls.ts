@@ -1,6 +1,8 @@
 import "server-only";
 import { getDbRequired } from "@/lib/mongodb";
 
+import { resolveCommissionPercents } from "@/lib/commissions";
+
 export type MemberControlDoc = {
   username: string;
   balanceAdjustment: number;
@@ -19,25 +21,7 @@ export type MemberControlDoc = {
 export const DEFAULT_GLOBAL_COMMISSION_PERCENT = 35;
 export const DEFAULT_GOAL_REACHED_COMMISSION_PERCENT = 40;
 
-export function resolveCommissionPercents(control?: Partial<MemberControlDoc> | null) {
-  const legacy = control?.commissionPercentOverride;
-  const global =
-    control?.globalCommissionPercentOverride != null
-      ? Number(control.globalCommissionPercentOverride)
-      : legacy != null
-        ? Number(legacy)
-        : DEFAULT_GLOBAL_COMMISSION_PERCENT;
-  const goalReached =
-    control?.goalReachedCommissionPercentOverride != null
-      ? Number(control.goalReachedCommissionPercentOverride)
-      : legacy != null
-        ? Number(legacy)
-        : DEFAULT_GOAL_REACHED_COMMISSION_PERCENT;
-  return {
-    global: Math.min(100, Math.max(0, global)),
-    goalReached: Math.min(100, Math.max(0, goalReached)),
-  };
-}
+export { resolveCommissionPercents } from "@/lib/commissions";
 
 export async function getAllMemberControls() {
   const db = await getDbRequired();

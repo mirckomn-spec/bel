@@ -5,11 +5,15 @@ import { listMemberUsernames } from "@/lib/members";
 import {
   getAllMemberControls,
   upsertMemberControl,
-  resolveCommissionPercents,
   DEFAULT_GLOBAL_COMMISSION_PERCENT,
 } from "@/lib/member-controls";
+import {
+  DAILY_SALES_TARGET,
+  DEFAULT_GOAL_REACHED_COMMISSION_PERCENT,
+  resolveCommissionPercents,
+} from "@/lib/commissions";
 
-const DAILY_TARGET = 150;
+const DAILY_TARGET = DAILY_SALES_TARGET;
 
 type ProofDoc = {
   uploader?: string;
@@ -126,7 +130,7 @@ export async function GET() {
       bonusActive: false,
       commissionPercent: DEFAULT_GLOBAL_COMMISSION_PERCENT,
       globalCommissionPercent: DEFAULT_GLOBAL_COMMISSION_PERCENT,
-      goalReachedCommissionPercent: 40,
+      goalReachedCommissionPercent: DEFAULT_GOAL_REACHED_COMMISSION_PERCENT,
     };
 
     return NextResponse.json({
@@ -280,7 +284,13 @@ export async function PATCH(request: Request) {
     }
 
     const saved = await upsertMemberControl(username, patch, session.username);
-    return NextResponse.json({ ok: true, control: saved });
+    const commissions = resolveCommissionPercents(saved);
+    return NextResponse.json({
+      ok: true,
+      control: saved,
+      globalCommissionPercent: commissions.global,
+      goalReachedCommissionPercent: commissions.goalReached,
+    });
   } catch (e) {
     const r = mongo503(e);
     if (r) return r;

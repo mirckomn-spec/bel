@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserAvatar } from "@/components/user-avatar";
+import {
+  computePeriodTotals,
+} from "@/lib/commissions";
 
 const PROOF_COOLDOWN_MS = 10_000;
 
@@ -12,6 +15,7 @@ type Proof = {
   productName: string;
   uploader: string;
   saleValue: number;
+  grossSaleValue?: number;
   originalName: string;
   mimeType: string;
   createdAt: string;
@@ -62,6 +66,8 @@ type GoalItem = {
   streakDays: number;
   bonusActive: boolean;
   commissionPercent: number;
+  globalCommissionPercent: number;
+  goalReachedCommissionPercent: number;
 };
 
 type GoalsResponse = {
@@ -681,8 +687,14 @@ export default function MembrosPainelClient({
   const rows = ranking?.[rankingTab] ?? [];
   const activePersonalPenaltyPercent = activePenaltyPercentFromFines(fines);
   const commissionPercent = goals?.current.commissionPercent ?? 35;
+  const globalCommissionPercent = goals?.current.globalCommissionPercent ?? 35;
+  const goalReachedCommissionPercent = goals?.current.goalReachedCommissionPercent ?? 40;
   const isDailyGoalCompleted = (goals?.current.progress ?? 0) >= 100;
-  const realNetMultiplier = (commissionPercent / 100) * (1 - activePersonalPenaltyPercent / 100);
+  const commissionControl = {
+    globalCommissionPercentOverride: goals?.current.globalCommissionPercent ?? 35,
+    goalReachedCommissionPercentOverride:
+      goals?.current.goalReachedCommissionPercent ?? 40,
+  };
 
   const dashboardDaysMap: Record<keyof RankingWindows, number> = {
     d1: 1,
@@ -691,15 +703,14 @@ export default function MembrosPainelClient({
     d31: 31,
   };
   const nowMs = Date.now();
-  const filteredProofs = proofs.filter((proof) => {
-    const ageMs = nowMs - new Date(proof.createdAt).getTime();
-    return ageMs <= dashboardDaysMap[dashboardTab] * 24 * 60 * 60 * 1000;
+  const selectedDays = dashboardDaysMap[dashboardTab];
+  const periodStartMs = nowMs - selectedDays * 24 * 60 * 60 * 1000;
+  const periodTotals = computePeriodTotals(username, proofs, commissionControl, {
+    sinceMs: periodStartMs,
+    untilMs: nowMs,
   });
-  const dashboardTotalSold = filteredProofs.reduce(
-    (acc, proof) => acc + Number(proof.saleValue ?? 0),
-    0,
-  );
-  const dashboardMyShare = dashboardTotalSold * realNetMultiplier;
+  const dashboardTotalSold = periodTotals.grossSold;
+  const dashboardMyShare = periodTotals.realEarnings;
   const availableToWithdraw = Number(withdrawalsData?.wallet.available ?? 0);
   const minWithdraw = Number(withdrawalsData?.minWithdraw ?? 200);
   const hasPendingWithdraw = (withdrawalsData?.withdrawals ?? []).some(
@@ -707,31 +718,29 @@ export default function MembrosPainelClient({
   );
   const canRequestWithdraw = availableToWithdraw >= minWithdraw && !hasPendingWithdraw;
   const dashboardVisibleReal = Math.max(0, availableToWithdraw);
-  const dashboardProofsCount = filteredProofs.length;
+  const dashboardProofsCount = periodTotals.proofCount;
   const dashboardAverageTicket =
     dashboardProofsCount > 0 ? dashboardTotalSold / dashboardProofsCount : 0;
   const chartPointsCount = 12;
-  const selectedDays = dashboardDaysMap[dashboardTab];
   const chartStepDays = Math.max(1, Math.ceil(selectedDays / chartPointsCount));
   const chartSeries = Array.from({ length: chartPointsCount }, (_, index) => {
-    const endTime = nowMs - (chartPointsCount - 1 - index) * chartStepDays * 24 * 60 * 60 * 1000;
+    const endTime =
+      nowMs - (chartPointsCount - 1 - index) * chartStepDays * 24 * 60 * 60 * 1000;
     const startTime = endTime - chartStepDays * 24 * 60 * 60 * 1000;
-    const total = proofs
-      .filter((proof) => {
-        const createdTime = new Date(proof.createdAt).getTime();
-        return createdTime > startTime && createdTime <= endTime;
-      })
-      .reduce((acc, proof) => acc + Number(proof.saleValue ?? 0), 0);
+    const bucket = computePeriodTotals(username, proofs, commissionControl, {
+      sinceMs: startTime,
+      untilMs: endTime,
+    });
     return {
       label: `${index + 1}`,
-      value: Number(total.toFixed(2)),
+      grossValue: bucket.grossSold,
+      realValue: bucket.realEarnings,
     };
   });
-  const realSeries = chartSeries.map((item) => ({
-    ...item,
-    value: Number((item.value * realNetMultiplier).toFixed(2)),
+  const activeSeries = chartSeries.map((item) => ({
+    label: item.label,
+    value: dashboardChartMode === "real" ? item.realValue : item.grossValue,
   }));
-  const activeSeries = dashboardChartMode === "real" ? realSeries : chartSeries;
   const chartMax = Math.max(...activeSeries.map((item) => item.value), 1);
   const svgWidth = 900;
   const svgHeight = 260;
@@ -958,13 +967,19 @@ export default function MembrosPainelClient({
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-[#B885A3]">
                         <PastelHeart />
-                        Valor real no periodo ({commissionPercent}% e multas ativas)
+                        Valor real no periodo (comissao por dia + multas ja aplicadas)
                       </p>
                       <p className="mt-2 text-3xl font-semibold tracking-tight text-[#F48FB1] sm:text-4xl lg:text-5xl">
-                        R$ {dashboardVisibleReal.toFixed(2)}
+                        R$ {dashboardMyShare.toFixed(2)}
                       </p>
                       <p className="mt-2 text-xs text-[#B885A3]">
-                        Este e o saldo disponivel para saque agora (minimo R$ {minWithdraw.toFixed(2)}).
+                        Comissao efetiva hoje: {commissionPercent}%. Cada dia usa{" "}
+                        {globalCommissionPercent}% ou {goalReachedCommissionPercent}% conforme
+                        bateu a meta de R$ 150 naquele dia.
+                      </p>
+                      <p className="mt-1 text-xs text-[#B885A3]">
+                        Saldo disponivel para saque: R$ {dashboardVisibleReal.toFixed(2)} (minimo R${" "}
+                        {minWithdraw.toFixed(2)}).
                       </p>
                       <div className="mt-3">
                         <button
@@ -987,11 +1002,11 @@ export default function MembrosPainelClient({
                       ) : null}
                       {activePersonalPenaltyPercent > 0 ? (
                         <p className="mt-2 text-xs text-[#B885A3]">
-                          Multas ativas em % somam{" "}
+                          Multas ativas somam{" "}
                           <strong className="text-[#A64D79]">
                             {activePersonalPenaltyPercent.toFixed(1)}%
                           </strong>{" "}
-                          e reduzem o valor real exibido aqui e no grafico (ate 100%).
+                          e ja foram descontadas no valor de cada comprovante enviado.
                         </p>
                       ) : null}
                     </div>
@@ -1042,21 +1057,28 @@ export default function MembrosPainelClient({
                   <p className="text-2xl font-semibold text-[#F48FB1]">
                     {(dashboardChartMode === "total"
                       ? dashboardAverageTicket
-                      : dashboardAverageTicket * realNetMultiplier
+                      : dashboardProofsCount > 0
+                        ? dashboardMyShare / dashboardProofsCount
+                        : 0
                     ).toFixed(2)}
                   </p>
                 </article>
                 <article className="rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4">
                   <p className="text-sm text-[#B885A3]">
-                    {dashboardChartMode === "total"
-                      ? `Estimativa de comissao (${commissionPercent}%)`
-                      : "Multa ativa (%)"}
+                      {dashboardChartMode === "total"
+                        ? `Estimativa de comissao (${commissionPercent}% hoje)`
+                        : "Multa ativa (%)"}
                   </p>
                   <p className="text-2xl font-semibold text-[#F48FB1]">
                     {dashboardChartMode === "total"
                       ? `R$ ${(dashboardTotalSold * (commissionPercent / 100)).toFixed(2)}`
                       : `${activePersonalPenaltyPercent.toFixed(1)}%`}
                   </p>
+                  {dashboardChartMode === "total" ? (
+                    <p className="mt-1 text-[10px] text-[#B885A3]">
+                      Estimativa usando a comissao de hoje; o valor real usa a % de cada dia.
+                    </p>
+                  ) : null}
                 </article>
               </div>
               </div>
@@ -1657,7 +1679,10 @@ export default function MembrosPainelClient({
                 </p>
                 <p className="text-sm text-[#A64D79]">
                   Comissao ativa hoje:{" "}
-                  <strong>{isDailyGoalCompleted ? "40%" : "35%"}</strong>
+                  <strong>{commissionPercent.toFixed(0)}%</strong>
+                  {" "}
+                  (global {globalCommissionPercent.toFixed(0)}% · meta{" "}
+                  {goalReachedCommissionPercent.toFixed(0)}%)
                 </p>
                 <div className="mt-2 h-3 w-full rounded-full bg-white">
                   <div
@@ -1672,14 +1697,14 @@ export default function MembrosPainelClient({
                   <p className="mt-1 text-sm text-[#8f4568]">
                     Voce completou <strong>100%</strong> da sua meta diaria. Seu foguinho esta em{" "}
                     <strong>{goals?.current.streakDays ?? 0} dia(s)</strong> e sua comissao hoje
-                    fica em <strong>40%</strong>.
+                    fica em <strong>{goalReachedCommissionPercent.toFixed(0)}%</strong>.
                   </p>
                 </div>
               ) : null}
               {!isDailyGoalCompleted ? (
                 <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
                   Hoje a meta ainda nao foi batida. Sem foguinho ativo e a comissao segue em{" "}
-                  <strong>35%</strong>.
+                  <strong>{globalCommissionPercent.toFixed(0)}%</strong>.
                 </div>
               ) : null}
               <p className="mt-4 text-sm text-[#B885A3]">

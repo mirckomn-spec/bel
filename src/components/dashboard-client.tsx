@@ -1164,7 +1164,33 @@ export default function DashboardClient({ initialProofs, members }: DashboardCli
         setMemberControlMessage(String(data.error ?? "Falha ao salvar controle do membro."));
         return false;
       }
+      const savedControl = (data as {
+        control?: {
+          globalCommissionPercentOverride?: number | null;
+          goalReachedCommissionPercentOverride?: number | null;
+        };
+        globalCommissionPercent?: number;
+        goalReachedCommissionPercent?: number;
+      });
       await Promise.all([loadGoalsUsers(), loadMemberWallet(memberManageUsername)]);
+      if (savedControl.globalCommissionPercent != null) {
+        setMemberGlobalCommissionInput(
+          String(Number(savedControl.globalCommissionPercent).toFixed(2)),
+        );
+      } else if (savedControl.control?.globalCommissionPercentOverride != null) {
+        setMemberGlobalCommissionInput(
+          String(Number(savedControl.control.globalCommissionPercentOverride).toFixed(2)),
+        );
+      }
+      if (savedControl.goalReachedCommissionPercent != null) {
+        setMemberGoalCommissionInput(
+          String(Number(savedControl.goalReachedCommissionPercent).toFixed(2)),
+        );
+      } else if (savedControl.control?.goalReachedCommissionPercentOverride != null) {
+        setMemberGoalCommissionInput(
+          String(Number(savedControl.control.goalReachedCommissionPercentOverride).toFixed(2)),
+        );
+      }
       setMemberControlMessage("Atualizacao salva.");
       return true;
     } finally {
