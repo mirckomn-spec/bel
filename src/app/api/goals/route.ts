@@ -10,6 +10,7 @@ import {
 import {
   DAILY_SALES_TARGET,
   DEFAULT_GOAL_REACHED_COMMISSION_PERCENT,
+  computeDayCommissionSummary,
   resolveCommissionPercents,
 } from "@/lib/commissions";
 
@@ -18,6 +19,7 @@ const DAILY_TARGET = DAILY_SALES_TARGET;
 type ProofDoc = {
   uploader?: string;
   saleValue?: number;
+  grossSaleValue?: number;
   createdAt: string | Date;
 };
 
@@ -91,6 +93,7 @@ export async function GET() {
     const members = await listMemberUsernames();
     const controls = await getAllMemberControls();
     const controlsMap = new Map(controls.map((item) => [item.username, item]));
+    const todayKey = start.toISOString().slice(0, 10);
     const allUsers = members
       .map((username) => {
         const control = controlsMap.get(username);
@@ -106,7 +109,12 @@ export async function GET() {
             : computeStreakDays(username);
         const bonusActive = progress >= 100;
         const commissions = resolveCommissionPercents(control);
-        const commissionPercent = bonusActive ? commissions.goalReached : commissions.global;
+        const daySummary = computeDayCommissionSummary(
+          username,
+          allProofs,
+          control,
+          todayKey,
+        );
         return {
           username,
           total: Number(total.toFixed(2)),
@@ -114,7 +122,8 @@ export async function GET() {
           progress,
           streakDays,
           bonusActive,
-          commissionPercent,
+          commissionPercent: daySummary.effectivePercent,
+          nextSaleCommissionPercent: daySummary.nextSalePercent,
           globalCommissionPercent: commissions.global,
           goalReachedCommissionPercent: commissions.goalReached,
         };
@@ -129,6 +138,7 @@ export async function GET() {
       streakDays: 0,
       bonusActive: false,
       commissionPercent: DEFAULT_GLOBAL_COMMISSION_PERCENT,
+      nextSaleCommissionPercent: DEFAULT_GLOBAL_COMMISSION_PERCENT,
       globalCommissionPercent: DEFAULT_GLOBAL_COMMISSION_PERCENT,
       goalReachedCommissionPercent: DEFAULT_GOAL_REACHED_COMMISSION_PERCENT,
     };

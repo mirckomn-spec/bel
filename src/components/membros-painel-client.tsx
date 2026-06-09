@@ -66,6 +66,7 @@ type GoalItem = {
   streakDays: number;
   bonusActive: boolean;
   commissionPercent: number;
+  nextSaleCommissionPercent?: number;
   globalCommissionPercent: number;
   goalReachedCommissionPercent: number;
 };
@@ -686,9 +687,11 @@ export default function MembrosPainelClient({
 
   const rows = ranking?.[rankingTab] ?? [];
   const activePersonalPenaltyPercent = activePenaltyPercentFromFines(fines);
-  const commissionPercent = goals?.current.commissionPercent ?? 35;
   const globalCommissionPercent = goals?.current.globalCommissionPercent ?? 35;
   const goalReachedCommissionPercent = goals?.current.goalReachedCommissionPercent ?? 40;
+  const commissionPercent = goals?.current.commissionPercent ?? globalCommissionPercent;
+  const nextSaleCommissionPercent =
+    goals?.current.nextSaleCommissionPercent ?? globalCommissionPercent;
   const isDailyGoalCompleted = (goals?.current.progress ?? 0) >= 100;
   const commissionControl = {
     globalCommissionPercentOverride: goals?.current.globalCommissionPercent ?? 35,
@@ -935,7 +938,7 @@ export default function MembrosPainelClient({
             <>
               <h2 className="text-2xl text-[#A64D79]">Dashboard</h2>
               <p className="mt-2 text-sm leading-relaxed text-[#B885A3]">
-                Veja suas vendas por periodo e o valor real a receber ({commissionPercent}%).
+                Veja suas vendas por periodo e o valor real a receber (comissao progressiva por dia).
               </p>
               <div className="mt-1.5 flex flex-wrap items-end justify-between gap-3 lg:-translate-y-[1cm]">
                 <div className="flex flex-wrap gap-2">
@@ -973,9 +976,9 @@ export default function MembrosPainelClient({
                         R$ {dashboardMyShare.toFixed(2)}
                       </p>
                       <p className="mt-2 text-xs text-[#B885A3]">
-                        Comissao efetiva hoje: {commissionPercent}%. Cada dia usa{" "}
-                        {globalCommissionPercent}% ou {goalReachedCommissionPercent}% conforme
-                        bateu a meta de R$ 150 naquele dia.
+                        Comissao efetiva hoje: {commissionPercent.toFixed(2)}%. Ate R$ 150 no dia
+                        vale {globalCommissionPercent}%; so o que passar de R$ 150 vale{" "}
+                        {goalReachedCommissionPercent}%.
                       </p>
                       <p className="mt-1 text-xs text-[#B885A3]">
                         Saldo disponivel para saque: R$ {dashboardVisibleReal.toFixed(2)} (minimo R${" "}
@@ -1066,17 +1069,18 @@ export default function MembrosPainelClient({
                 <article className="rounded-2xl border border-[#F8BBD0] bg-[#FFFFFF] p-4">
                   <p className="text-sm text-[#B885A3]">
                       {dashboardChartMode === "total"
-                        ? `Estimativa de comissao (${commissionPercent}% hoje)`
+                        ? "Comissao real no periodo"
                         : "Multa ativa (%)"}
                   </p>
                   <p className="text-2xl font-semibold text-[#F48FB1]">
                     {dashboardChartMode === "total"
-                      ? `R$ ${(dashboardTotalSold * (commissionPercent / 100)).toFixed(2)}`
+                      ? `R$ ${dashboardMyShare.toFixed(2)}`
                       : `${activePersonalPenaltyPercent.toFixed(1)}%`}
                   </p>
                   {dashboardChartMode === "total" ? (
                     <p className="mt-1 text-[10px] text-[#B885A3]">
-                      Estimativa usando a comissao de hoje; o valor real usa a % de cada dia.
+                      Calculada dia a dia: {globalCommissionPercent}% ate a meta e{" "}
+                      {goalReachedCommissionPercent}% so no excedente.
                     </p>
                   ) : null}
                 </article>
@@ -1094,7 +1098,7 @@ export default function MembrosPainelClient({
                           : "bg-white text-[#A64D79]"
                       }`}
                     >
-                      Valor real ({commissionPercent}%) - principal
+                      Valor real no periodo - principal
                     </button>
                     <button
                       type="button"
@@ -1678,11 +1682,18 @@ export default function MembrosPainelClient({
                   Foguinho: {goals?.current.streakDays ?? 0} dia(s) seguido(s)
                 </p>
                 <p className="text-sm text-[#A64D79]">
-                  Comissao ativa hoje:{" "}
-                  <strong>{commissionPercent.toFixed(0)}%</strong>
+                  Comissao efetiva hoje:{" "}
+                  <strong>{commissionPercent.toFixed(2)}%</strong>
                   {" "}
                   (global {globalCommissionPercent.toFixed(0)}% · meta{" "}
-                  {goalReachedCommissionPercent.toFixed(0)}%)
+                  {goalReachedCommissionPercent.toFixed(0)}% no excedente)
+                </p>
+                <p className="text-sm text-[#A64D79]">
+                  Proxima venda hoje:{" "}
+                  <strong>{nextSaleCommissionPercent.toFixed(0)}%</strong>
+                  {isDailyGoalCompleted
+                    ? " (meta ja batida — comissao cheia nesta faixa)"
+                    : ` (ate completar R$ ${goals?.current.target.toFixed(2) ?? "150.00"})`}
                 </p>
                 <div className="mt-2 h-3 w-full rounded-full bg-white">
                   <div
@@ -1696,15 +1707,17 @@ export default function MembrosPainelClient({
                   <p className="text-lg font-semibold text-[#a64d79]">🔥 Parabens!</p>
                   <p className="mt-1 text-sm text-[#8f4568]">
                     Voce completou <strong>100%</strong> da sua meta diaria. Seu foguinho esta em{" "}
-                    <strong>{goals?.current.streakDays ?? 0} dia(s)</strong> e sua comissao hoje
-                    fica em <strong>{goalReachedCommissionPercent.toFixed(0)}%</strong>.
+                    <strong>{goals?.current.streakDays ?? 0} dia(s)</strong>. Proximas vendas de
+                    hoje valem <strong>{goalReachedCommissionPercent.toFixed(0)}%</strong> (a
+                    comissao extra da meta vale so no que passar de R$ 150 no dia).
                   </p>
                 </div>
               ) : null}
               {!isDailyGoalCompleted ? (
                 <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                  Hoje a meta ainda nao foi batida. Sem foguinho ativo e a comissao segue em{" "}
-                  <strong>{globalCommissionPercent.toFixed(0)}%</strong>.
+                  A meta ainda nao foi batida hoje. Vendas ate R$ 150 valem{" "}
+                  <strong>{globalCommissionPercent.toFixed(0)}%</strong>; depois da meta, so o
+                  excedente vale <strong>{goalReachedCommissionPercent.toFixed(0)}%</strong>.
                 </div>
               ) : null}
               <p className="mt-4 text-sm text-[#B885A3]">

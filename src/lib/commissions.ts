@@ -47,12 +47,171 @@ export function resolveCommissionPercents(
   };
 }
 
-export function commissionPercentForDayTotal(
-  dayTotal: number,
+/** Comissao marginal: so o que passa da meta diaria usa a % da meta. */
+export function computeMarginalCommissionEarnings(
+  cumulativeBefore: number,
+  saleAmount: number,
   commissions: ResolvedCommissionPercents,
   dailyTarget = DAILY_SALES_TARGET,
 ) {
-  return dayTotal >= dailyTarget ? commissions.goalReached : commissions.global;
+  const amount = Math.max(0, Number(saleAmount));
+  if (amount <= 0) return 0;
+
+  const before = Math.max(0, Number(cumulativeBefore));
+  const after = before + amount;
+
+  if (before >= dailyTarget) {
+    return amount * (commissions.goalReached / 100);
+  }
+  if (after <= dailyTarget) {
+    return amount * (commissions.global / 100);
+  }
+
+  const atGlobalRate = dailyTarget - before;
+  const atGoalRate = amount - atGlobalRate;
+  return (
+    atGlobalRate * (commissions.global / 100) + atGoalRate * (commissions.goalReached / 100)
+  );
+}
+
+export function proofGrossSaleValue(proof: ProofCommissionInput) {
+  return Number(proof.grossSaleValue ?? proof.saleValue ?? 0);
+}
+
+export function proofNetSaleValue(proof: ProofCommissionInput) {
+  return Number(proof.saleValue ?? 0);
+}
+
+function proofSortTime(proof: ProofCommissionInput) {
+  const time = new Date(proof.createdAt).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function proofTrackingKey(proof: ProofCommissionInput, index: number) {
+  return `${String(proof.uploader ?? "").toLowerCase()}|${dayKeyFromDate(proof.createdAt)}|${proofSortTime(proof)}|${proofNetSaleValue(proof)}|${index}`;
+}
+
+function filterProofsForUser(username: string, proofs: ProofCommissionInput[]) {
+  const normalized = username.toLowerCase();
+  return proofs.filter((proof) => String(proof.uploader ?? "").toLowerCase() === normalized);
+}
+
+/** Mapa proofKey -> vendas acumuladas no dia ANTES deste comprovante. */
+export function buildCumulativeBeforeByProof(
+  username: string,
+  proofs: ProofCommissionInput[],
+) {
+  const userProofs = filterProofsForUser(username, proofs).sort(
+    (a, b) => proofSortTime(a) - proofSortTime(b),
+  );
+  const cumulativeBefore = new Map<string, number>();
+  const dayRunning = new Map<string, number>();
+
+  userProofs.forEach((proof, index) => {
+    const day = dayKeyFromDate(proof.createdAt);
+    const before = dayRunning.get(day) ?? 0;
+    cumulativeBefore.set(proofTrackingKey(proof, index), before);
+    dayRunning.set(day, before + proofNetSaleValue(proof));
+  });
+
+  return { cumulativeBefore, userProofs };
+}
+
+export function computeProofCommissionEarnings(
+  proof: ProofCommissionInput,
+  cumulativeBeforeSameDay: number,
+  control?: CommissionControlInput | null,
+  dailyTarget = DAILY_SALES_TARGET,
+) {
+  const commissions = resolveCommissionPercents(control);
+  return computeMarginalCommissionEarnings(
+    cumulativeBeforeSameDay,
+    proofNetSaleValue(proof),
+    commissions,
+    dailyTarget,
+  );
+}
+
+export function computeEarningsFromProofs(
+  username: string,
+  proofs: ProofCommissionInput[],
+  control?: CommissionControlInput | null,
+  dailyTarget = DAILY_SALES_TARGET,
+) {
+  const commissions = resolveCommissionPercents(control);
+  const { cumulativeBefore, userProofs } = buildCumulativeBeforeByProof(username, proofs);
+
+  let grossReal = 0;
+  userProofs.forEach((proof, index) => {
+    const before = cumulativeBefore.get(proofTrackingKey(proof, index)) ?? 0;
+    grossReal += computeMarginalCommissionEarnings(
+      before,
+      proofNetSaleValue(proof),
+      commissions,
+      dailyTarget,
+    );
+  });
+
+  const todaySummary = computeDayCommissionSummary(
+    username,
+    proofs,
+    control,
+    new Date().toISOString().slice(0, 10),
+    dailyTarget,
+  );
+
+  return {
+    grossReal: Number(grossReal.toFixed(2)),
+    commissionPercentToday: todaySummary.effectivePercent,
+    nextSaleCommissionPercent: todaySummary.nextSalePercent,
+    metaReachedToday: todaySummary.metaReached,
+    commissions,
+  };
+}
+
+export function computeDayCommissionSummary(
+  username: string,
+  proofs: ProofCommissionInput[],
+  control: CommissionControlInput | null | undefined,
+  dayKey: string,
+  dailyTarget = DAILY_SALES_TARGET,
+) {
+  const commissions = resolveCommissionPercents(control);
+  const { cumulativeBefore, userProofs } = buildCumulativeBeforeByProof(username, proofs);
+
+  let sales = 0;
+  let earnings = 0;
+  userProofs.forEach((proof, index) => {
+    if (dayKeyFromDate(proof.createdAt) !== dayKey) return;
+    const before = cumulativeBefore.get(proofTrackingKey(proof, index)) ?? 0;
+    const amount = proofNetSaleValue(proof);
+    earnings += computeMarginalCommissionEarnings(before, amount, commissions, dailyTarget);
+    sales += amount;
+  });
+
+  const metaReached = sales >= dailyTarget;
+  const effectivePercent =
+    sales > 0 ? Number(((earnings / sales) * 100).toFixed(2)) : commissions.global;
+  const nextSalePercent = metaReached ? commissions.goalReached : commissions.global;
+
+  return {
+    sales: Number(sales.toFixed(2)),
+    earnings: Number(earnings.toFixed(2)),
+    effectivePercent,
+    nextSalePercent,
+    metaReached,
+  };
+}
+
+export function computeTodayCommissionPercentForUser(
+  username: string,
+  proofs: ProofCommissionInput[],
+  control?: CommissionControlInput | null,
+  dailyTarget = DAILY_SALES_TARGET,
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  return computeDayCommissionSummary(username, proofs, control, today, dailyTarget)
+    .effectivePercent;
 }
 
 export function buildDailyTotalsForUser(
@@ -64,62 +223,9 @@ export function buildDailyTotalsForUser(
   for (const proof of proofs) {
     if (String(proof.uploader ?? "").toLowerCase() !== normalized) continue;
     const day = dayKeyFromDate(proof.createdAt);
-    totals.set(day, (totals.get(day) ?? 0) + Number(proof.saleValue ?? 0));
+    totals.set(day, (totals.get(day) ?? 0) + proofNetSaleValue(proof));
   }
   return totals;
-}
-
-export function computeTodayCommissionPercentForUser(
-  username: string,
-  proofs: ProofCommissionInput[],
-  control?: CommissionControlInput | null,
-  dailyTarget = DAILY_SALES_TARGET,
-) {
-  const commissions = resolveCommissionPercents(control);
-  const today = new Date().toISOString().slice(0, 10);
-  const todayTotal = buildDailyTotalsForUser(username, proofs).get(today) ?? 0;
-  return commissionPercentForDayTotal(todayTotal, commissions, dailyTarget);
-}
-
-export function computeEarningsFromProofs(
-  username: string,
-  proofs: ProofCommissionInput[],
-  control?: CommissionControlInput | null,
-  dailyTarget = DAILY_SALES_TARGET,
-) {
-  const commissions = resolveCommissionPercents(control);
-  const normalized = username.toLowerCase();
-  const dailyTotals = buildDailyTotalsForUser(username, proofs);
-  let grossReal = 0;
-
-  for (const proof of proofs) {
-    if (String(proof.uploader ?? "").toLowerCase() !== normalized) continue;
-    const day = dayKeyFromDate(proof.createdAt);
-    const dayTotal = dailyTotals.get(day) ?? 0;
-    const percent = commissionPercentForDayTotal(dayTotal, commissions, dailyTarget);
-    grossReal += Number(proof.saleValue ?? 0) * (percent / 100);
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const commissionPercentToday = commissionPercentForDayTotal(
-    dailyTotals.get(today) ?? 0,
-    commissions,
-    dailyTarget,
-  );
-
-  return {
-    grossReal: Number(grossReal.toFixed(2)),
-    commissionPercentToday,
-    commissions,
-  };
-}
-
-export function proofGrossSaleValue(proof: ProofCommissionInput) {
-  return Number(proof.grossSaleValue ?? proof.saleValue ?? 0);
-}
-
-export function proofNetSaleValue(proof: ProofCommissionInput) {
-  return Number(proof.saleValue ?? 0);
 }
 
 export function computePeriodTotals(
@@ -133,38 +239,48 @@ export function computePeriodTotals(
 ) {
   const normalized = username.toLowerCase();
   const { sinceMs, untilMs } = options;
-  const filtered = proofs.filter((proof) => {
-    if (String(proof.uploader ?? "").toLowerCase() !== normalized) return false;
-    const created = new Date(proof.createdAt).getTime();
-    if (Number.isNaN(created)) return false;
-    if (sinceMs != null && created <= sinceMs) return false;
-    if (untilMs != null && created > untilMs) return false;
-    return true;
-  });
-
-  const dailyTotals = buildDailyTotalsForUser(username, proofs);
+  const { cumulativeBefore, userProofs } = buildCumulativeBeforeByProof(username, proofs);
   const commissions = resolveCommissionPercents(control);
+
   let grossSold = 0;
   let netSold = 0;
   let realEarnings = 0;
+  let proofCount = 0;
 
-  for (const proof of filtered) {
+  userProofs.forEach((proof, index) => {
+    const created = new Date(proof.createdAt).getTime();
+    if (Number.isNaN(created)) return;
+    if (sinceMs != null && created <= sinceMs) return;
+    if (untilMs != null && created > untilMs) return;
+
     const gross = proofGrossSaleValue(proof);
     const net = proofNetSaleValue(proof);
+    const before = cumulativeBefore.get(proofTrackingKey(proof, index)) ?? 0;
+
     grossSold += gross;
     netSold += net;
-    const day = dayKeyFromDate(proof.createdAt);
-    const percent = commissionPercentForDayTotal(
-      dailyTotals.get(day) ?? 0,
+    realEarnings += computeMarginalCommissionEarnings(
+      before,
+      net,
       commissions,
+      DAILY_SALES_TARGET,
     );
-    realEarnings += net * (percent / 100);
-  }
+    proofCount += 1;
+  });
 
   return {
     grossSold: Number(grossSold.toFixed(2)),
     netSold: Number(netSold.toFixed(2)),
     realEarnings: Number(realEarnings.toFixed(2)),
-    proofCount: filtered.length,
+    proofCount,
   };
+}
+
+/** @deprecated Use meta marginal — mantido so para compatibilidade interna. */
+export function commissionPercentForDayTotal(
+  dayTotal: number,
+  commissions: ResolvedCommissionPercents,
+  dailyTarget = DAILY_SALES_TARGET,
+) {
+  return dayTotal >= dailyTarget ? commissions.goalReached : commissions.global;
 }
